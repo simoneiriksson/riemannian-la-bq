@@ -20,8 +20,10 @@ def generate_data(xs, fn, weights, sigma_y=0.1):
     return ys
 
 M=2
+N=100
 xs = torch.rand((N, M))*10
 xs, _ = xs.sort(dim=0)
+
 
 fn(xs).shape
 weights = torch.tensor([[1.0], [1.0], [1.0]])   
@@ -35,14 +37,19 @@ y_train = ys[N//5:, :]
 x_train.shape, y_train.shape, x_test.shape, y_test.shape
 
 prior_log_sigma=torch.tensor(.1)
-model = MyModel(M, N, fn, prior_log_sigma)
+model = MyModel(M, fn, prior_log_sigma)
 #model = mini(M_inputs=M, num_hid=10, num_out=1)
 log_scale = torch.tensor(.1)
 likelihood_given_outputs=lambda x: dist.Normal(x, log_scale.exp())
+
 pyromodel = PyroModel(model, prior_log_sigma=prior_log_sigma,
                       likelihood_given_outputs=likelihood_given_outputs,
                       batch_size = 100)
 
+nuts_kernel_a = NUTS(pyromodel.model, step_size=1.)
+mcmc_auto = MCMC(nuts_kernel_a, num_samples=200, warmup_steps=200)
+mcmc_auto.run(x_train, y_train)
+mcmc_auto.summary()
 
 def pyromodel_manual(x, y=None):
     D = 3
@@ -57,10 +64,6 @@ mcmc_manual = MCMC(nuts_kernel_m, num_samples=200, warmup_steps=200)
 mcmc_manual.run(x_train, y_train)
 mcmc_manual.summary()
 
-nuts_kernel_a = NUTS(pyromodel.model, step_size=1.)
-mcmc_auto = MCMC(nuts_kernel_a, num_samples=200, warmup_steps=200)
-mcmc_auto.run(x_train, y_train)
-mcmc_auto.summary()
 
 def evals(mcmc):
     samples = mcmc.get_samples()

@@ -6,13 +6,16 @@ import numpy as np
 import pyro
 
 class MyModel(torch.nn.Module):
-    def __init__(self, M, N, fn, prior_log_sigma):
+    def __init__(self, input_dim, num_classes, fn, prior_log_sigma):
         super(MyModel, self).__init__()
-        self.M = M
-        self.N = N
-        self.weights = torch.nn.Parameter(torch.rand((M+1,1))*prior_log_sigma)
+        self.input_dim = input_dim
+        dummy = torch.zeros((1, input_dim))
+        self.num_params = fn(dummy).shape[1]
+        self.num_classes = num_classes
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params, num_classes))*prior_log_sigma)
+        #self.weights = torch.nn.Parameter(torch.rand((3,1))*prior_log_sigma)
         self.fn = fn
-        
+
     def forward(self, xs):
         return self.fn(xs) @ self.weights
 
@@ -61,7 +64,10 @@ class PyroModel(torch.nn.Module):
             
             for i in pyro.plate("batches", num_batches): 
                 x_ = x[i * bs: (i+1)*bs] 
-                y_ = y[i * bs: (i+1)*bs] 
+                if y is not None:
+                    y_ = y[i * bs: (i+1)*bs] 
+                else: 
+                    y_ = None
                 with pyro.plate("data"+str(i), x_.shape[0]):
                     set_weights_old(self.base_params, self.parameters_samples, self.device)
                     z = self.base_model(x_)
