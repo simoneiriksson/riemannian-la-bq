@@ -1,10 +1,13 @@
+import numpy as np
 
+# Kindly copied from https://github.com/wjmaddox/drbayes/blob/master/subspace_inference/utils.py
 def set_weights(model, vector, device=None):
     offset = 0
     for param in model.parameters():
         param.data.copy_(vector[offset:offset + param.numel()].view(param.size()).to(device))
         offset += param.numel()
 
+# Kindly copied from https://github.com/wjmaddox/drbayes/blob/master/subspace_inference/utils.py
 def set_weights_old(params, w, device):	
     offset = 0
     for module, name, shape in params:
@@ -13,6 +16,7 @@ def set_weights_old(params, w, device):
         setattr(module, name, value.view(shape).to(device))	
         offset += size
 
+# Kindly copied from https://github.com/wjmaddox/drbayes/blob/master/subspace_inference/utils.py
 def extract_parameters(model):
     params = []	
     for module in model.modules():	
