@@ -1,5 +1,6 @@
 import torch
 from matplotlib import pyplot as plt 
+import seaborn as sns
 
 def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
     D = posterior_samples_tensor.shape[1]
