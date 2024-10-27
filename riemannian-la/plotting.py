@@ -2,6 +2,7 @@ import torch
 from matplotlib import pyplot as plt 
 import seaborn as sns
 
+
 def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
     D = posterior_samples_tensor.shape[1]
     # Create subplots for every pair of dimensions
@@ -14,6 +15,7 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
                 post = posterior_samples_tensor[:,i]
                 sns.histplot(post, kde=True, ax=ax, stat="density")
                 xs = torch.linspace(post.min(), post.max(), 100)
+                print(f"{i=}")
                 sns.lineplot(x=xs, y=torch.distributions.Normal(LA_loc[i], torch.sqrt(LA_cov[i,i])).log_prob(xs).exp(), ax=ax, color="red")
                 ax.set_xlabel(f"Dim {i}")
             #i=0; j=1
@@ -25,7 +27,9 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
                 mean = xij.mean(dim=1)
                 cov = xij.cov()
                 # Scatter plot for the pair of dimensions (i, j)
-                ax.scatter(xi, xj, s=10, label=f"Dim {i} vs Dim {j}")
+                sns.kdeplot(x=xi, y=xj, ax=ax, fill=True, levels=10)
+                ax.scatter(xi, xj, s=1, label=f"Dim {i} vs Dim {j}", alpha=0.1, c="black")
+                
                 ax.set_xlabel(f"Dim {i}")
                 ax.set_ylabel(f"Dim {j}")
                 stds = torch.tensor([1, 2, 3, 4])
