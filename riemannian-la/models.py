@@ -6,18 +6,37 @@ import numpy as np
 import pyro
 
 class MyModel(torch.nn.Module):
-    def __init__(self, input_dim, num_classes, fn, prior_log_sigma):
+    def __init__(self, input_dim, output_dim, fn, prior_log_sigma):
         super(MyModel, self).__init__()
         self.input_dim = input_dim
         dummy = torch.zeros((1, input_dim))
         self.num_params = fn(dummy).shape[1]
-        self.num_classes = num_classes
-        self.weights = torch.nn.Parameter(torch.rand((self.num_params, num_classes))*prior_log_sigma)
+        self.output_dim = output_dim
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params, output_dim))*prior_log_sigma)
         #self.weights = torch.nn.Parameter(torch.rand((3,1))*prior_log_sigma)
         self.fn = fn
 
     def forward(self, xs):
         return self.fn(xs) @ self.weights
+
+
+class MyModel_stoch(torch.nn.Module):
+    def __init__(self, input_dim, fn, prior_log_sigma):
+        super(MyModel_stoch, self).__init__()
+        self.input_dim = input_dim
+        dummy = torch.zeros((1, input_dim))
+        self.num_params = fn(dummy).shape[1]
+        #self.output_dim = output_dim
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
+        self.fn = fn
+
+    def forward(self, xs):
+        print(f"{self.weights.shape}")
+        print(f"{self.fn(xs).shape}")
+        return self.fn(xs) * self.weights.unsqueeze(0)
+
+
+
 
 class mini(nn.Module):
     def __init__(self, seed=None, M_inputs=2, num_hid=10, num_out=10):
@@ -53,7 +72,7 @@ class PyroModel(torch.nn.Module):
         self.model_size = sum([p[2].numel() for p in self.base_params])
         self.device = device
 
-    def model(self, x, y=None):
+    def model(self, x=None, y=None):
         self.parameters_samples = pyro.sample("parameters_samples", 
                                               dist.Normal(torch.zeros(self.model_size), 
                                                           torch.ones(self.model_size) * np.exp(self.prior_log_sigma)).to_event(1)).to(self.device)
@@ -74,12 +93,17 @@ class PyroModel(torch.nn.Module):
                     pred = pyro.deterministic("pred"+str(i), z)
                     pyro.sample("obs"+str(i), self.likelihood(pred).to_event(1), obs=y_)
         else:
-            set_weights_old(self.base_params, self.parameters_samples, self.device)
-            z = self.base_model(x)
-            pred = pyro.deterministic("pred", z)
-            pyro.sample("obs", self.likelihood(pred).to_event(1), obs=y)
+            shape = x.shape[0] if x is not None else 1
+            with pyro.plate("data", shape):
+                set_weights_old(self.base_params, self.parameters_samples, self.device)
+                if x is not None:
+                    z = self.base_model(x)
+                else:    
+                    z = self.base_model()
+                pred = pyro.deterministic("pred", z)
+                pyro.sample("obs", self.likelihood(pred).to_event(1), obs=y)
 
     def forward(self, *args, **kwargs):
-        self.parameters_samples = pyro.sample("parameters_samples", dist.Normal(torch.zeros(self.model_size), self.model_size * np.exp(self.prior_log_sigma)).to_event(1)).to(self.device)
-        set_weights_old(self.base_params, self.parameters_samples, self.device)
+        #self.parameters_samples = pyro.sample("parameters_samples", dist.Normal(torch.zeros(self.model_size), self.model_size * np.exp(self.prior_log_sigma)).to_event(1)).to(self.device)
+        #set_weights_old(self.base_params, self.parameters_samples, self.device)
         return self.base_model(*args, **kwargs)

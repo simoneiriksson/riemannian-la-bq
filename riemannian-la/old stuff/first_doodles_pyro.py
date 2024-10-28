@@ -44,12 +44,12 @@ class MyModel(torch.nn.Module):
 
 N=100
 M=2
-xs = torch.rand((N, M))*1
+xs = torch.rand((N, M))*10
 xs, _ = xs.sort(dim=0)
 
 fn(xs).shape
 weights = torch.tensor([[1.0], [1.0], [1.0]])   
-ys = generate_data(xs, fn, weights, sigma_y=0.1)
+ys = generate_data(xs, fn, weights, sigma_y=0.01)
 ys.shape
 
 x_test = xs[0:N//5, :]
@@ -62,12 +62,14 @@ model = MyModel(M, N, fn)
 
 device="cpu"
 model.to(device)
+prior_log_sigma=torch.tensor(0.0)
+log_scale = torch.tensor(.1)
 
 def pyro_model(x, y=None):
     D = 3
-    weights = pyro.sample("weights", dist.Normal(torch.zeros((D), device=device), torch.ones((D), device=device)).to_event(1))
-    log_scale = pyro.sample("log_scale", dist.Normal(torch.zeros((1), device=device), torch.ones((1), device=device)).to_event(0))
-    y_pred = pyro.deterministic("y_pred",fn(x) @ weights)
+    weights = pyro.sample("weights", dist.Normal(torch.zeros((D)), torch.ones((D))*prior_log_sigma.exp()).to_event(1))
+    #log_scale = pyro.sample("log_scale", dist.Normal(torch.zeros((1), device=device), torch.ones((1), device=device)).to_event(0))
+    y_pred = pyro.deterministic("y_pred", fn(x) @ weights)
     with pyro.plate('data', x.shape[0]):
         return pyro.sample('obs', dist.Normal(y_pred.squeeze(-1), log_scale.exp()), obs=y)
 
@@ -82,7 +84,7 @@ def get_laplace(pyro_model, x_train, y_train, num_iters=400, lr=0.01):
     
     for i in range(num_iters):
         loss = svi.step(x_train.to(device), y_train[:,0].to(device))
-        if i % 50 == 0:
+        if i % 500 == 0:
             print(f"i = {i}, loss = {loss}")
     #svi.run(x_train.to(device), y_train[:,0].to(device), num_iters)
     guide_trace = pyro.poutine.trace(delta_guide).get_trace(x_train)
@@ -100,7 +102,7 @@ def get_laplace(pyro_model, x_train, y_train, num_iters=400, lr=0.01):
 
 
     return loc, cov, H, delta_guide, model_guide_parameters
-LA_loc, LA_cov, LA_H, delta_guide, model_guide_parameters = get_laplace(pyro_model, x_train, y_train, num_iters=1000, lr=0.005)
+LA_loc, LA_cov, LA_H, delta_guide, model_guide_parameters = get_laplace(pyro_model, x_train, y_train, num_iters=10000, lr=0.01)
 
 eigenvals, eigenvectors = torch.linalg.eigh(LA_cov)
 
@@ -113,7 +115,7 @@ print(f"{cov_restricted=}")
 # MCMC-samples
 nuts_kernel = NUTS(pyro_model)
 #mcmc = MCMC(nuts_kernel, num_samples=100, warmup_steps=100, num_chains=1)
-mcmc = MCMC(nuts_kernel, num_samples=1000, warmup_steps=200, num_chains=1)
+mcmc = MCMC(nuts_kernel, num_samples=500, warmup_steps=500, num_chains=1)
 mcmc.run(x_train.to(device), y_train[:,0].to(device))
 
 # Show summary of inference results
@@ -122,14 +124,14 @@ mcmc.summary()
 # Extract samples from posterior
 posterior_samples = mcmc.get_samples()
 print(f"{posterior_samples['weights'].shape=}")
-print(f"{posterior_samples['log_scale'].shape=}")
+#print(f"{posterior_samples['log_scale'].shape=}")
 
 # plot chains:
 fig, axes = plt.subplots(1, 4, figsize=(15, 5))
 sns.lineplot(data=posterior_samples["weights"][:,0], ax=axes[0]).set(title="weight 0")
 sns.lineplot(data=posterior_samples["weights"][:,1], ax=axes[1]).set(title="weight 1")
 sns.lineplot(data=posterior_samples["weights"][:,2], ax=axes[2]).set(title="weight 2")
-sns.lineplot(data=posterior_samples["log_scale"][:], ax=axes[3]).set(title="log_scale")
+#sns.lineplot(data=posterior_samples["log_scale"][:], ax=axes[3]).set(title="log_scale")
 fig.show()
 
 # collect samples in one tensor, in the same order as the laplace approximation
@@ -137,7 +139,7 @@ posterior_samples_list = []
 posterior_samples_names =[]
 for parameter, size in model_guide_parameters.items():
     if parameter in posterior_samples:
-        posterior_samples_names += [f"{parameter}_{i}" for i in range(size)]
+        posterior_samples_names += [f"{parameter}_{i}" for i in range(size.numel())]
         posterior_samples_list.append(posterior_samples[parameter].reshape(-1, *size))
 
 posterior_samples_tensor = torch.cat(posterior_samples_list, dim=-1)
@@ -147,6 +149,13 @@ print(f"{LA_loc = }, \n{LA_cov.diag() = }")
 
 print(f"{posterior_samples_tensor.T.cov() = }")
 print(f"{LA_cov = }")
+
+
+from pandas.plotting import scatter_matrix
+import pandas as pd
+df = pd.DataFrame(posterior_samples_tensor)
+scatter_matrix(df, alpha = 0.2, figsize = (6, 6), diagonal = 'kde')
+
 
 fig, axs = distributions_plot(posterior_samples_tensor, LA_loc, LA_cov)
 fig.show()

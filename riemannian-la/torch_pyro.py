@@ -20,17 +20,17 @@ def fn(xs):
 def fn(xs):
     return xs
 
-def generate_data(N, M, fn, weights, sigma_y=0.1):
+def generate_data(N, M, fn, weights, log_scale=0.1):
     xs = torch.rand((N, M))*10
     #xs, _ = xs.sort(dim=0)
-    ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*sigma_y, size=(xs.shape[0],1))
+    ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
     return xs, ys
 
 M=2
-N=100
-
+N=10
+log_scale = torch.tensor(1.).log()
 weights = torch.tensor([[1.0], [2.0]])   
-xs, ys = generate_data(N, M, fn, weights, sigma_y=1.)
+xs, ys = generate_data(N, M, fn, weights, log_scale=log_scale)
 perm = torch.randperm(N)
 test_train_ratio = 0.5 
 
@@ -42,9 +42,25 @@ x_train.shape, y_train.shape, x_test.shape, y_test.shape
 
 prior_log_sigma=torch.tensor(1.).log()
 
-model = MyModel(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
+
+class MyModel(torch.nn.Module):
+    def __init__(self, num_params, fn, prior_log_sigma):
+        super(MyModel, self).__init__()
+        self.num_params = num_params
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
+        self.paws = torch.arange(1, num_params+1)
+        self.fn = fn
+    def forward(self, xs):
+        return  (fn(xs) * self.weights**self.paws).sum().unsqueeze(-1)
+
+
+################################################
+# MCMC sampling
+
+#model = MyModel(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
+model = MyModel(num_params=M, fn=fn, prior_log_sigma=prior_log_sigma)
 #model = mini(M_inputs=M, num_hid=10, num_out=1)
-log_scale = torch.tensor(1.).log()
+
 likelihood_given_outputs=lambda x: dist.Normal(x, log_scale.exp())
 
 pyromodel = PyroModel(model, prior_log_sigma=prior_log_sigma,
@@ -52,7 +68,7 @@ pyromodel = PyroModel(model, prior_log_sigma=prior_log_sigma,
                       batch_size = None)
 
 nuts_kernel_a = NUTS(pyromodel.model, step_size=1.)
-mcmc_auto = MCMC(nuts_kernel_a, num_samples=1000, warmup_steps=200)
+mcmc_auto = MCMC(nuts_kernel_a, num_samples=100, warmup_steps=100)
 mcmc_auto.run(x_train, y_train)
 mcmc_auto.summary()
 
@@ -89,7 +105,9 @@ evals(mcmc_auto)
 
 posterior_samples = mcmc_auto.get_samples()['parameters_samples']
 
-model = MyModel(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
+###################
+# Laplace approximation using laplace-torch
+model = MyModel(num_params=M, fn=fn, prior_log_sigma=prior_log_sigma)
 optimizer = torch.optim.Adam(model.parameters(), lr=.1)
 criterion = torch.nn.MSELoss()
 
@@ -118,67 +136,16 @@ train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=16)
 la.fit(train_loader)
 print(f"{la.posterior_scale/x_train.shape[0] = }")
 print(f"{la.posterior_covariance/x_train.shape[0] = }")
-print(f"{la.H.inverse() = }")
+#print(f"{la.H.inverse() = }")
 print(f"{la.mean = }")
 
 
-la.mean
 fig, axs = distributions_plot(posterior_samples, la.mean, la.posterior_covariance)
 fig.show()
 
 
-###############################################################################################
-
-
-
-
-mean = posterior_samples.mean(dim=0)
-cov = posterior_samples.T.cov()
-
-
-from pyro_utils import get_laplace
-model = MyModel(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
-#model = mini(M_inputs=M, num_hid=10, num_out=1)
-
-pyromodel = PyroModel(model, prior_log_sigma=prior_log_sigma,
-                      likelihood_given_outputs=likelihood_given_outputs,
-                      batch_size = None)
-LA_loc, LA_cov, LA_H, delta_guide, model_guide_parameters = get_laplace(pyromodel.model, x=xs, y=ys, num_iters=10000, lr=0.1)
-
-fig, axs = distributions_plot(posterior_samples, LA_loc=LA_loc, LA_cov=LA_cov)
-fig.show()
 
 
 
 
 
-
-
-
-
-
-
-# Collect model parameters as a list of tensors for the Hessian calculation
-
-params = list(model.parameters())
-optimizer.zero_grad()
-loss = criterion(model(x_train), y_train)
-J = torch.autograd.grad(loss, list(model.parameters()), create_graph=True)
-J = torch.cat([e.flatten() for e in J]) # flatten
-num_param = sum(p.numel() for p in model.parameters())
-H = torch.zeros((num_param, num_param))
-# Fill in Hessian
-
-for i in range(num_param):
-    result = torch.autograd.grad(J[i], list(model.parameters()), retain_graph=True)
-    H[i] = torch.cat([r.flatten() for r in result]) # flatten
-cov = H.inverse()
-
-print(f"{model.weights = }")
-print(f"{J = }")
-print(f"{H = }")
-print(f"{cov = }")
-
-
-fig, axs = distributions_plot(posterior_samples, model.weights.data)
-fig.show()
