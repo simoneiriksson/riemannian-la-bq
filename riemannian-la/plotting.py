@@ -51,6 +51,10 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
                     ellipse = plt.matplotlib.patches.Ellipse(LA_loc[[i,j]], width[curveno], height[curveno], angle=angle, fill=False, edgecolor="red", linewidth=2)
                     ax.add_patch(ellipse)
 
+                xlim = ax.get_xlim()
+                ylim = ax.get_ylim()
+                ax.set_xlim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+                ax.set_ylim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
                 #ax.set_xlim(posterior_samples_tensor[:,i].min(), posterior_samples_tensor[:,i].max())
                 #ax.set_ylim(posterior_samples_tensor[:,j].min(), posterior_samples_tensor[:,j].max())
     return fig, axs
