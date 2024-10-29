@@ -29,10 +29,8 @@ def generate_data(N, M, fn, weights, log_scale=0.1):
     #xs = torch.rand((N, M))*10
     xs = torch.ones(N, M)
     #xs, _ = xs.sort(dim=0)
-    ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp
-    (), size=(xs.shape[0],1))
-    ys = torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp
-    (), size=(xs.shape[0],1))
+    #ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
+    ys = torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
     return xs, ys
 
 M=2
@@ -57,10 +55,14 @@ class MyModel(torch.nn.Module):
         super(MyModel, self).__init__()
         self.num_params = num_params
         self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
-        self.paws = torch.arange(1, num_params+1)
+        self.paws = torch.arange(1, (num_params*2)+1, 2)
         self.fn = fn
     def forward(self, xs):
-        return  ((fn(xs) * self.weights**self.paws).sum(dim=1) - 1).unsqueeze(-1)
+        if xs.dim() == 1:
+            xs = xs.unsqueeze(0)
+            return  ((fn(xs) * self.weights**self.paws).sum(dim=1) - 1).squeeze(-1)
+        else:
+            return  ((fn(xs) * self.weights**self.paws).sum(dim=1) - 1).unsqueeze(-1)
 
 
 ################################################
@@ -153,12 +155,11 @@ fig.show()
 
 
 class Manifold():
-    def __init__(self, model, likelihood, device="cpu"):
+    def __init__(self, model, likelihood, device="cpu", regularization=0.1, noise=0.1):
         super(Manifold, self).__init__()
         self.model = model.to(device)
         self.likelihood = likelihood
         self.device = device
-
 
         if self.likelihood == "regression":
             self.criterion = torch.nn.MSELoss()
@@ -166,6 +167,8 @@ class Manifold():
             self.criterion = torch.nn.CrossEntropyLoss()
         else:
             raise ValueError("Likelihood not recognized")
+        self.regularization = regularization if type(regularization) == torch.Tensor else torch.tensor(regularization)
+        self.noise = noise if type(noise) == torch.Tensor else torch.tensor(noise)
 
         self.MAP = None
         self.MAP_covariance = None
@@ -186,7 +189,7 @@ class Manifold():
                 optimizer.zero_grad()
                 x, y = x.to(self.device), y.to(self.device)
                 pred = model(x)
-                loss = self.criterion(pred, y)
+                loss = self.loss(x, y)
                 loss.backward()
                 optimizer.step()
                 accum_loss += loss.item()
@@ -205,13 +208,35 @@ class Manifold():
     def set_weights(self, theta):
         torch.nn.utils.vector_to_parameters(theta, self.model.parameters())
 
-    def loss(self):
+    def loss_bck(self):
         return criterion(self.model(self.x_train), self.y_train)
+    
+    def mse_loss(self, x=None, y=None):
+        if x is None:
+            x = self.x_train
+            y = self.y_train
+        return (1.0 / self.noise) * criterion(self.model(x), y) * 0.5
 
-    def gradient(self):
+    def loss(self, x=None, y=None):
+        #print(f"{x.shape = }")
+        #print(f"{y.shape = }")
+        if x is None:
+            x = self.x_train
+            y = self.y_train
+        return self.mse_loss(x, y) + self.regularization * torch.nn.utils.parameters_to_vector(model.parameters()).norm()**2
+
+
+    def gradient_bck(self):
         #params = torch.nn.utils.parameters_to_vector(self.model.parameters())
         grads = torch.autograd.grad(self.loss(), self.model.parameters())
         return torch.cat([parm.flatten() for parm in list(grads)])
+
+    def gradient(self):
+        #params = torch.nn.utils.parameters_to_vector(self.model.parameters())
+        pred = self.model(self.x_train)
+        grads = torch.autograd.grad(pred, self.model.parameters())  # D times N
+        grads_flat = torch.cat([parm.flatten() for parm in list(grads)])
+        return 
 
     def covariance(self):
         self.LA.fit(self.train_loader)
@@ -227,6 +252,7 @@ class Manifold():
     def predictive_samples(self, x, n_samples=1):
         return self.LA.predictive_samples(x, n_samples=n_samples)
 
+    # Analytic derivation of the ODE
     def ode_fun(self, t, state):
         #print(f"{state = }")
         state_tensor = torch.tensor(state, dtype=torch.float32).to(self.device)
@@ -255,13 +281,59 @@ class Manifold():
         M = Id + Grad_val * Grad_val.T
         return M
 
-
+def make_functional_fwd(_model):
+    def fn(data, parameters):
+        return functional_call(_model, parameters, (data,))
+    return fn
 
 model = MyModel(num_params=M, fn=fn, prior_log_sigma=prior_log_sigma)
 mymanifold = Manifold(model, likelihood="regression")
 mymanifold.set_train_data(x_train, y_train)
 
 mymanifold.fit(epochs=5000, lr=0.1, verbose=True)
+from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
+
+params = dict(mymanifold.model.named_parameters())
+# make a functional call to the model above
+model_func = make_functional_fwd(mymanifold.model) # functional forward
+params = dict(mymanifold.model.named_parameters())
+
+grad_values = vmap(grad(model_func, argnums=1), in_dims=(0, None))(x_train, params)
+print(grad_values)
+
+
+grad_values = vmap(grad(model_func, argnums=0), in_dims=(0, None))(x_train, params)
+print(grad_values)
+
+
+print(grad_values)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ft_compute_sample_grad = vmap(ft_compute_grad, in_dims=(None, 0, 0))
+params = torch.nn.utils.parameters_to_vector(mymanifold.model.parameters())
+
+gradw = ft_compute_grad(params)
+
+grads()
+
+grads = grad(pred, mymanifold.model.parameters())  # D times N
+grads_flat = torch.cat([parm.flatten() for parm in list(grads)])
+
+
+
+
 mymanifold.gradient()
 
 
