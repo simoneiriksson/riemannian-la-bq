@@ -18,26 +18,69 @@ from scipy.integrate import solve_ivp
 from utils import set_weights_old, extract_parameters, set_weights
 from laplace import Laplace
 from torch.utils.data import DataLoader, TensorDataset
+from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
-def fn(xs):
-    return torch.column_stack([xs[:,0], xs[:,1], xs[:,0]**2 + xs[:,1]**2])
+def fn1(xs):
+    return torch.column_stack([xs[:,0], xs[:,1]])
 
-def fn(xs):
+def generate_data1(N, M, fn, weights, target_log_sigma=0.1):
+    xs = torch.rand((N, M))*10
+    #xs = torch.ones(N, M)
+    #xs, _ = xs.sort(dim=0)
+    ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(target_log_sigma).exp(), size=(xs.shape[0],1))
+    #ys = torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
+    return xs, ys
+
+def fn2(xs):
     return xs
 
-def generate_data(N, M, fn, weights, log_scale=0.1):
+def generate_data2(N, M, fn, weights, target_log_sigma=0.1):
     #xs = torch.rand((N, M))*10
     xs = torch.ones(N, M)
     #xs, _ = xs.sort(dim=0)
     #ys = fn(xs) @ weights + torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
-    ys = torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(log_scale).exp(), size=(xs.shape[0],1))
+    ys = torch.normal(torch.tensor(0.0), torch.tensor(1.)*torch.tensor(target_log_sigma).exp(), size=(xs.shape[0],1))
     return xs, ys
 
+class MyModel2(torch.nn.Module):
+    def __init__(self, num_params, fn, prior_log_sigma):
+        super(MyModel2, self).__init__()
+        self.num_params = num_params
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
+        self.paws = torch.arange(1, (num_params*2)+1, 2)
+        self.fn = fn
+    def forward(self, xs):
+        if xs.dim() == 1:
+            xs = xs.unsqueeze(0)
+            return  ((self.fn(xs) * self.weights**self.paws).sum(dim=1) - 1).squeeze(-1)
+        else:
+            return  ((self.fn(xs) * self.weights**self.paws).sum(dim=1) - 1).unsqueeze(-1)
+
+
+class MyModel1(torch.nn.Module):
+    def __init__(self, num_params, fn, prior_log_sigma):
+        super(MyModel1, self).__init__()
+        self.num_params = num_params
+        self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
+        self.paws = torch.arange(1, (num_params*2)+1, 2)
+        self.fn = fn
+    def forward(self, xs):
+        if xs.dim() == 1:
+            xs = xs.unsqueeze(0)
+            return  ((self.fn(xs) @ self.weights))
+        else:
+            return  ((self.fn(xs) @ self.weights)).unsqueeze(-1)
+
+MODEL = MyModel1
+FN = fn1
+GENERATE_DATA = generate_data1
+
+
 M=2
-N=10
-log_scale = torch.tensor(.1).log()
+N=100
+target_log_sigma = torch.tensor(5.).log()
 weights = torch.tensor([[1.0], [2.0]])   
-xs, ys = generate_data(N, M, fn, weights, log_scale=log_scale)
+xs, ys = GENERATE_DATA(N, M, FN, weights, target_log_sigma=target_log_sigma)
 perm = torch.randperm(N)
 test_train_ratio = 0.5 
 
@@ -50,38 +93,26 @@ x_train.shape, y_train.shape, x_test.shape, y_test.shape
 prior_log_sigma=torch.tensor(1.).log()
 
 
-class MyModel(torch.nn.Module):
-    def __init__(self, num_params, fn, prior_log_sigma):
-        super(MyModel, self).__init__()
-        self.num_params = num_params
-        self.weights = torch.nn.Parameter(torch.rand((self.num_params))*prior_log_sigma)
-        self.paws = torch.arange(1, (num_params*2)+1, 2)
-        self.fn = fn
-    def forward(self, xs):
-        if xs.dim() == 1:
-            xs = xs.unsqueeze(0)
-            return  ((fn(xs) * self.weights**self.paws).sum(dim=1) - 1).squeeze(-1)
-        else:
-            return  ((fn(xs) * self.weights**self.paws).sum(dim=1) - 1).unsqueeze(-1)
-
-
 ################################################
 # MCMC sampling
 
-#model = MyModel(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
-model = MyModel(num_params=M, fn=fn, prior_log_sigma=prior_log_sigma)
-#model = mini(M_inputs=M, num_hid=10, num_out=1)
+#model = MODEL(input_dim=M, output_dim=1, fn=fn, prior_log_sigma=prior_log_sigma)
+model = MODEL(num_params=M, fn=FN, prior_log_sigma=prior_log_sigma)
+#model = MODEL(M_inputs=M, num_hid=10, num_out=1)
 
-likelihood_given_outputs=lambda x: dist.Normal(x, log_scale.exp())
+likelihood_given_outputs=lambda x: dist.Normal(x, target_log_sigma.exp())
 
 pyromodel = PyroModel(model, prior_log_sigma=prior_log_sigma,
                       likelihood_given_outputs=likelihood_given_outputs,
                       batch_size = None)
 
 nuts_kernel_a = NUTS(pyromodel.model, step_size=1.)
-mcmc_auto = MCMC(nuts_kernel_a, num_samples=300, warmup_steps=100)
+mcmc_auto = MCMC(nuts_kernel_a, num_samples=1000, warmup_steps=100)
 mcmc_auto.run(x_train, y_train)
 mcmc_auto.summary()
+posterior_samples = mcmc_auto.get_samples()['parameters_samples']
+
+
 
 # def pyromodel_manual(x, y=None):
 #     D = 3
@@ -114,44 +145,164 @@ evals(mcmc_auto)
 #print("Manual")
 #evals(mcmc_manual)
 
-posterior_samples = mcmc_auto.get_samples()['parameters_samples']
 
 ###################
 # Laplace approximation using laplace-torch
-model = MyModel(num_params=M, fn=fn, prior_log_sigma=prior_log_sigma)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-criterion = torch.nn.MSELoss()
-epochs=50000
+model = MODEL(num_params=M, fn=FN, prior_log_sigma=prior_log_sigma)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+criterion = torch.nn.MSELoss(reduction="sum")
+epochs=5000
 train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=16)
 for epoch in range(epochs):
     accum_loss = 0            
     for batch_no, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
         pred = model(x)
-        loss = criterion(pred, y)
+        #loss = 1/x.shape[0] * criterion(pred, y)/target_log_sigma.exp()**2 + prior_log_sigma.exp()**-1 * model.weights.norm()**2
+        #loss = -likelihood_given_outputs(pred).log_prob(y).sum()
+        mse_loss = criterion(pred, y) / (2 * target_log_sigma.exp()**2)
+        reg_loss = prior_log_sigma.exp()**-1 * model.weights.norm()**2 / 2
+        loss = mse_loss + reg_loss
+        #prior_prob = torch.distributions.Normal(torch.zeros((M)), torch.ones((M))*prior_log_sigma.exp()).log_prob(model.weights).sum()
+        #like = likelihood_given_outputs(pred).log_prob(y).sum()
+        #loss = -(like + prior_prob)
         loss.backward()
         optimizer.step()
         accum_loss += loss.item()
     if epoch % 100 == 0:
         print(f"{epoch = }, {accum_loss = }\t\t ", end="\r")
 
-
 MAP = torch.nn.utils.parameters_to_vector(model.parameters())
+print(f"{MAP = }")
+print(f"{posterior_samples.mean(dim=0) = }")
 
-print(f"{model.weights = }")
 
-
-la = Laplace(model, likelihood="regression", hessian_structure="full", subset_of_weights='all')
+la = Laplace(model, likelihood="regression", hessian_structure="full", subset_of_weights='all', prior_precision=1/prior_log_sigma.exp(), sigma_noise=target_log_sigma.exp())
 train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=16)
 la.fit(train_loader)
 print(f"{la.posterior_covariance = }")
 print(f"{la.posterior_precision = }")
 
+print(f"{la.posterior_scale = }")
+
+
 print(f"{la.mean = }")
-print(f"{la.H = }")
-dir(la)
+print(f"{la.H*la._H_factor = }")
+print(f"{la.prior_precision_diag = }")
+
 fig, axs = distributions_plot(posterior_samples, la.mean, la.posterior_covariance)
 fig.show()
+
+
+#####
+# Analytic solution:
+# Bayesian ML w 3 slide 5
+print(f"{posterior_samples.mean(dim=0) = }")
+print(f"{model.weights = }")
+S = (torch.eye(M) * prior_log_sigma.exp()**-2 + target_log_sigma.exp()**-2 * FN(x_train).T @ FN(x_train)).inverse()
+m = target_log_sigma.exp()**-2 * S @ FN(x_train).T @ y_train
+
+analytical_H = S.inverse() - torch.eye(M) * prior_log_sigma.exp()**-2
+fig, axs = distributions_plot(posterior_samples, m, S)
+fig.show()
+
+print(f"{m = }")
+print(f"{S = }")
+print(f"{S.inverse() = }")
+print(f"{analytical_H = }")
+
+
+################################################################################
+#  LA dyi:
+def make_functional_fwd(_model):
+    def fn(data, parameters):
+        return functional_call(_model, parameters, (data,))
+    return fn
+
+model_func = make_functional_fwd(model) # functional forward
+
+def make_loss_func(model_func, loss_fn):
+    def fn(parameters, data, target):
+        param_norm = torch.nn.utils.parameters_to_vector([param for param in parameters.values()]).norm()**2 / (2 * prior_log_sigma.exp()**2)
+        loss_from_pred = loss_fn(model_func(data, parameters), target) / (2*target_log_sigma.exp()**2)
+        total_loss = loss_from_pred +  param_norm
+        return total_loss
+    return fn
+
+model.weights.data = m.squeeze(1)
+params = dict(model.named_parameters())
+
+loss_func = make_loss_func(model_func, criterion)
+gradient_fn = grad(loss_func, argnums=0)
+gradient = gradient_fn(params, x_train, y_train)
+
+hess_fn = hessian(loss_func, argnums=0)
+hess = hess_fn(params, x_train, y_train) 
+hess.keys()
+H = hess['weights']['weights']
+#precision = H*.5 + torch.eye(H.shape[0]) * prior_log_sigma.exp()**-2
+precision = H
+#scale = precision.inverse()
+cov = precision.inverse()
+print(f"{cov = }")
+print(f"{precision = }")
+print(f"{H = }")
+
+fig, axs = distributions_plot(posterior_samples, params['weights'].detach(), cov.detach())
+fig.show()
+
+
+
+################################
+# LA DIY with distribution based soulution
+
+def make_functional_fwd(_model):
+    def fn(data, parameters):
+        return functional_call(_model, parameters, (data,))
+    return fn
+
+def make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs):
+    def fn(parameters, data, target):
+        param_vector = torch.nn.utils.parameters_to_vector([param for param in parameters.values()]).detach()
+        like = likelihood_given_outputs(model_func(data, parameters)).log_prob(target).sum(dim=0)
+        reg = prior_distribution.log_prob(param_vector)
+        return -(like+reg)[0]
+    return fn
+
+def LA_approximation(model, x_train, y_train, prior_distribution, likelihood_given_outputs, parametersubset=None, return_hessian=True, return_gradient=True):
+    if parametersubset is None:
+        parametersubset = model.named_parameters()
+    model_func = make_functional_fwd(model) # functional forward
+    params_used = dict(parametersubset)
+    loss_func = make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs)
+    gradient_fn = grad(loss_func, argnums=0)
+    return_vals = []
+    if return_gradient: 
+        gradient = gradient_fn(params_used, x_train, y_train)
+        return_vals.append(gradient)
+    if return_hessian:
+        hess_fn = hessian(loss_func, argnums=0)
+        hess = hess_fn(params_used, x_train, y_train)
+        return_vals.append(hess)
+    return return_vals
+
+prior_distribution = torch.distributions.MultivariateNormal(torch.zeros(M), torch.eye(M)*prior_log_sigma.exp()*M)
+grad_, hess_ = LA_approximation(model, x_train, y_train, prior_distribution, likelihood_given_outputs, parametersubset=None, return_hessian=True, return_gradient=True)
+print(f"{grad_ = }")
+print(f"{hess_ = }")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class Manifold():
@@ -291,22 +442,7 @@ mymanifold = Manifold(model, likelihood="regression")
 mymanifold.set_train_data(x_train, y_train)
 
 mymanifold.fit(epochs=5000, lr=0.1, verbose=True)
-from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
-params = dict(mymanifold.model.named_parameters())
-# make a functional call to the model above
-model_func = make_functional_fwd(mymanifold.model) # functional forward
-params = dict(mymanifold.model.named_parameters())
-
-grad_values = vmap(grad(model_func, argnums=1), in_dims=(0, None))(x_train, params)
-print(grad_values)
-
-
-grad_values = vmap(grad(model_func, argnums=0), in_dims=(0, None))(x_train, params)
-print(grad_values)
-
-
-print(grad_values)
 
 
 
