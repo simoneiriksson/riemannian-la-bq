@@ -78,7 +78,7 @@ GENERATE_DATA = generate_data1
 
 M=2
 N=100
-target_log_sigma = torch.tensor(5.).log()
+target_log_sigma = torch.tensor(1.).log()
 weights = torch.tensor([[1.0], [2.0]])   
 xs, ys = GENERATE_DATA(N, M, FN, weights, target_log_sigma=target_log_sigma)
 perm = torch.randperm(N)
@@ -90,7 +90,7 @@ x_train = xs[perm][int(N * test_train_ratio):, :]
 y_train = ys[perm][int(N * test_train_ratio):, :]
 x_train.shape, y_train.shape, x_test.shape, y_test.shape
 
-prior_log_sigma=torch.tensor(1.).log()
+prior_log_sigma=torch.tensor(10.).log()
 
 
 ################################################
@@ -151,18 +151,23 @@ evals(mcmc_auto)
 model = MODEL(num_params=M, fn=FN, prior_log_sigma=prior_log_sigma)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.nn.MSELoss(reduction="sum")
-epochs=5000
-train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=16)
+epochs=50000
+train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=500)
 for epoch in range(epochs):
     accum_loss = 0            
     for batch_no, (x, y) in enumerate(train_loader):
+        #print(f"{x.shape = }")
         optimizer.zero_grad()
         pred = model(x)
         #loss = 1/x.shape[0] * criterion(pred, y)/target_log_sigma.exp()**2 + prior_log_sigma.exp()**-1 * model.weights.norm()**2
         #loss = -likelihood_given_outputs(pred).log_prob(y).sum()
-        mse_loss = criterion(pred, y) / (2 * target_log_sigma.exp()**2)
-        reg_loss = prior_log_sigma.exp()**-1 * model.weights.norm()**2 / 2
-        loss = mse_loss + reg_loss
+        #mse_loss = criterion(pred, y) / (2 * target_log_sigma.exp()**2)
+        #reg_loss = prior_log_sigma.exp()**-1 * model.weights.norm()**2 / 2
+        #loss = mse_loss + reg_loss
+
+        param_norm = model.weights.norm()**2 / (2 * prior_log_sigma.exp()**2)
+        loss_from_pred = criterion(pred, y)*N/x.shape[0] / (2 * target_log_sigma.exp()**2)
+        loss = loss_from_pred + param_norm
         #prior_prob = torch.distributions.Normal(torch.zeros((M)), torch.ones((M))*prior_log_sigma.exp()).log_prob(model.weights).sum()
         #like = likelihood_given_outputs(pred).log_prob(y).sum()
         #loss = -(like + prior_prob)
@@ -171,6 +176,7 @@ for epoch in range(epochs):
         accum_loss += loss.item()
     if epoch % 100 == 0:
         print(f"{epoch = }, {accum_loss = }\t\t ", end="\r")
+        pass
 
 MAP = torch.nn.utils.parameters_to_vector(model.parameters())
 print(f"{MAP = }")
