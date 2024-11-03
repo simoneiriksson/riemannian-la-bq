@@ -6,6 +6,7 @@ from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional
 
 ###############################
 # LA wrapper function
+
 def make_functional_fwd(_model):
     def fn(data, parameters):
         return functional_call(_model, parameters, (data,))
@@ -61,6 +62,7 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
     loss_func = make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs)  # loss function
     gradient_fn = grad(loss_func, argnums=0)  # gradient function
     return_vals = []
+    
     if return_gradient: 
         gradient = gradient_fn(params_used, xs, ys)
         return_vals.append(gradient)
