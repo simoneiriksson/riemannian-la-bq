@@ -13,8 +13,14 @@ def make_functional_fwd(_model):
 def make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs):
     def fn(parameters, data, target):
         param_vector = torch.nn.utils.parameters_to_vector([param for param in parameters.values()]).detach()
-        like = likelihood_given_outputs(model_func(data, parameters)).log_prob(target).sum(dim=0)
+        #print(f"{target.shape = }")
+        #print(f"{data.shape = }")
+        pred = model_func(data, parameters)
+        #print(f"{pred.shape = }")
+        like = likelihood_given_outputs(pred).log_prob(target).sum()
         reg = prior_distribution.log_prob(param_vector)
+        #print(f"{like.shape = }")
+        #print(f"{reg.shape = }")
         return -(like+reg)
     return fn
 
@@ -31,7 +37,6 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
         raise ValueError("Either task_type or likelihood_given_outputs must be provided")
     if ((prior_distribution is None) and (prior_sigma is None)) or ((prior_distribution is not None) and (prior_sigma is not None)):
         raise ValueError("Either prior_distribution or prior_sigma must be provided")
-   
     
     if parametersubset is None:
         parametersubset = model.named_parameters()
@@ -51,7 +56,7 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
             likelihood_given_outputs = lambda x: torch.distributions.Categorical(logits=x)
         else:
             raise ValueError("task_type not recognized")
-    
+
     model_func = make_functional_fwd(model)  # functional forward
     params_used = dict(parametersubset)  # parameters used in the loss function
     loss_func = make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs)  # loss function
@@ -66,13 +71,14 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
         for i, (x, y) in enumerate(dataloader):  # loop over batches
             x, y = x.to(device), y.to(device)
             if return_gradient:
+                print(f"x.shape = {x.shape}")
+                print(f"y.shape = {y.shape}")
                 gradient = gradient_fn(params_used, x, y)
                 for key, value in gradient.items():
                     if key in gradients:
                         gradients[key] += value.detach()
                     else:
                         gradients[key] = value.detach()
-
             if return_hessian:
                 hess_fn = hessian(loss_func, argnums=0)
                 hess = hess_fn(params_used, x, y)
@@ -84,13 +90,12 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
                             hessians[key1][key2] += value2.detach()
                         else:
                             hessians[key1][key2] = value2.detach()
-                    
         if return_gradient: 
             return_vals.append(gradients)
         if return_hessian:
             return_vals.append(hessians)
     else:
-        if return_gradient: 
+        if return_gradient:
             gradient = gradient_fn(params_used, xs, ys)
             return_vals.append(gradient)
         if return_hessian:
@@ -98,3 +103,59 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
             hess = hess_fn(params_used, xs, ys)
             return_vals.append(hess)
     return return_vals
+
+
+
+def hessian_dict_to_matrix(hess_dict, verbose=False):
+    hess_size=0
+    # get parameter sizes:
+
+    parameter_properties = {}
+
+    for key1 in hess_dict.keys():
+        mat = hess_dict[key1][key1]
+        param_dims = len(mat.shape)//2
+        param_shape = mat.shape[0:param_dims]
+        param_numel = torch.prod(torch.tensor(param_shape)).item()
+        param_name = key1
+        parameter_properties[param_name] = {'param_shape': param_shape, 'param_dims': param_dims, 'param_numel': param_numel}
+        hess_size += param_numel
+
+    hess_matrix = torch.zeros((hess_size, hess_size))
+    index1 = 0
+    index2 = 0
+    for key1 in hess_dict.keys():
+        numel1 = parameter_properties[key1]['param_numel']
+        dim1 = parameter_properties[key1]['param_dims']
+        for key2 in hess_dict[key1].keys():
+            if verbose:
+                print(f"\n\n{key1 = }, {key2 = }")
+                print(f"{index1 = }, {index2 = }")
+            local_hess = hess_dict[key1][key2]
+            if verbose:
+                print(f"{local_hess.shape = }") 
+                print(f"{local_hess = }")
+                print(f"{parameter_properties[key1]['param_shape'] = }")
+                print(f"{parameter_properties[key2]['param_shape'] = }")
+
+            numel2 = parameter_properties[key2]['param_numel']
+            dim2 = parameter_properties[key2]['param_dims']
+            if verbose:
+                print(f"{numel1 = }, {numel2 = }")
+                print(f"{dim1 = }, {dim2 = }")
+
+            flatten_key1 = torch.flatten(local_hess, start_dim=0, end_dim=dim1-1)
+            if verbose:
+                print(f"{flatten_key1.shape = }")
+            local_hess_flat = torch.flatten(flatten_key1, start_dim=1)
+            if verbose:
+                print(f"{local_hess_flat.shape = }")
+
+            hess_matrix[index1:index1+numel1, index2:index2+numel2] = local_hess_flat
+            if verbose:
+                print(f"{local_hess_flat = }")
+
+            index2 += numel2
+        index1 += numel1
+        index2 = 0
+    return hess_matrix, parameter_properties
