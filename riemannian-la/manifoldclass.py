@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from laplace_approx import LA_approximation
+from laplace import Laplace
+from torchdiffeq import odeint
+
 
 
 class Manifold():
@@ -40,7 +43,7 @@ class Manifold():
             for batch_no, (x, y) in enumerate(self.train_loader):
                 optimizer.zero_grad()
                 x, y = x.to(self.device), y.to(self.device)
-                pred = model(x)
+                pred = self.model(x)
                 loss = self.loss(x, y)
                 loss.backward()
                 optimizer.step()
@@ -50,11 +53,16 @@ class Manifold():
                     print(f"{epoch = }, {accum_loss = }\t\t ", end="\r")
         self.register_this_as_map()
 
-    def register_this_as_map(self):
-        self.MAP = torch.nn.utils.parameters_to_vector(model.parameters()).clone().detach()
-        self.LA.fit(self.train_loader)
-        self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
-
+    def register_this_as_map(self, MAP=None):
+        if MAP is None:
+            self.MAP = torch.nn.utils.parameters_to_vector(model.parameters()).clone().detach()
+            self.LA.fit(self.train_loader)
+            self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
+        else:
+            self.MAP = MAP.clone().detach()
+            self.LA.fit(self.train_loader)
+            self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
+            
     def set_to_map(self):
         if self.MAP is not None:
             torch.nn.utils.vector_to_parameters(self.MAP, self.model.parameters())
@@ -64,7 +72,7 @@ class Manifold():
         torch.nn.utils.vector_to_parameters(theta, self.model.parameters())
 
     def loss_bck(self):
-        return criterion(self.model(self.x_train), self.y_train)
+        return self.criterion(self.model(self.x_train), self.y_train)
     
     def mse_loss(self, pred=None, target=None):
         if target is None:
@@ -86,7 +94,7 @@ class Manifold():
         #print(f"{self.target_sigma = }")
 
         loss_from_pred = self.criterion(pred, target)*x_train.shape[0]/pred.shape[0] / (2 * self.target_sigma**2)
-        loss = loss_from_pred #+ param_norm
+        loss = loss_from_pred + param_norm
         return loss #self.mse_loss(x, y) + self.regularization * torch.nn.utils.parameters_to_vector(model.parameters()).norm()**2
 
     def gradient_bck(self):
@@ -139,9 +147,28 @@ class Manifold():
         acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
         return torch.cat([v, acc]).to("cpu").detach().numpy()
     
-    def expmap(self, theta, v):
+    def expmap(self, theta, v, rtol=1e-3, atol=1e-3):
         init = torch.cat([theta, v]).to("cpu").detach().numpy()
-        solution = solve_ivp(self.ode_fun, [0, 1], init, dense_output=True, rtol=1e-3, atol=1e-3)
+        solution = solve_ivp(self.ode_fun, [0, 1], init, dense_output=True, rtol=rtol, atol=atol)
+        return solution
+
+
+    # Analytic derivation of the ODE
+    def ode_fun_torch_(self, t, state):
+        state_tensor = state
+        theta = state_tensor[:self.MAP.shape[0]]
+        v = state_tensor[self.MAP.shape[0]:]
+        self.set_weights(theta)
+        grad_val = self.gradient()
+        hess_val = self.hess()
+        
+        acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
+        return torch.cat([v, acc])
+        
+    def expmap_torch(self, theta, v, numsteps=2, rtol=1e-3, atol=1e-3, method="rk4", **kwargs):
+        init = torch.cat([theta, v])
+        ts = torch.linspace(0, 1, numsteps)
+        solution = odeint(self.ode_fun_torch_, init, ts, rtol=rtol, atol=atol, method=method)
         return solution
 
     def metric(self):
