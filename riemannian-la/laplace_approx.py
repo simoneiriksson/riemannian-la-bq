@@ -5,10 +5,12 @@ from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional
 
 ###############################
 # LA wrapper function
+
 def make_functional_fwd(_model):
-    def fn(data, parameters):
-        return functional_call(_model, parameters, (data,))
+    def fn(parameters, data):
+        return functional_call(_model, parameters, (data,)).squeeze(0)
     return fn
+
 
 def make_loss_func_from_distr(model_func, prior_distribution, likelihood_given_outputs):
     def fn(parameters, data, target):
@@ -71,8 +73,8 @@ def LA_approximation(model, dataloader = None, xs=None, ys=None, batch_size=16, 
         for i, (x, y) in enumerate(dataloader):  # loop over batches
             x, y = x.to(device), y.to(device)
             if return_gradient:
-                print(f"x.shape = {x.shape}")
-                print(f"y.shape = {y.shape}")
+                #print(f"x.shape = {x.shape}")
+                #print(f"y.shape = {y.shape}")
                 gradient = gradient_fn(params_used, x, y)
                 for key, value in gradient.items():
                     if key in gradients:
@@ -159,3 +161,85 @@ def hessian_dict_to_matrix(hess_dict, verbose=False):
         index1 += numel1
         index2 = 0
     return hess_matrix, parameter_properties
+
+
+
+
+def grad_dict_to_vector(grad_dict, verbose=False):
+    N = list(grad_dict.values())[0].shape[0]
+    grad_size = sum([len(torch.flatten(grad_dict[key][0])) for key in grad_dict.keys()])
+    grad_vector = torch.zeros((N, grad_size))
+    index = 0
+    for name, value in grad_dict.items():
+        numel = torch.prod(torch.tensor(value.shape[1:]))
+        flatten_grad = torch.flatten(value, start_dim=1)
+        grad_vector[:,index:index+numel] = flatten_grad
+        index += numel
+    return grad_vector
+
+
+def GNN_hessian(model, x_train, parametersubset=None):
+    if parametersubset is None:
+        parametersubset = dict(model.named_parameters())
+    #print(f"{parametersubset = }")
+    model_func = make_functional_fwd(model)
+    ft_comute_grad = grad(model_func, argnums=0)
+    mapped_ft = vmap(ft_comute_grad, in_dims=(None, 0))
+    grad_dict = mapped_ft(parametersubset, x_train)
+    grads = grad_dict_to_vector(grad_dict)
+    ggn_hessian = grads.permute(1,0) @ grads
+    return ggn_hessian
+
+
+# def GNN_hessian(model, x_train, parametersubset=None):
+#     model_func = make_functional_fwd(model)
+#     num_params = sum([p[1].numel() for p in model.named_parameters()])
+#     ggn_hessian = torch.zeros((num_params, num_params))
+#     ft_comute_grad = grad(model_func, argnums=0)
+#     mapped_ft = vmap(ft_comute_grad, in_dims=(None, 0))
+#     params = dict(model.named_parameters())
+#     grad_dict = mapped_ft(params, x_train)
+#     grads = grad_dict_to_vector(grad_dict)
+#     ggn_hessian += grads.permute(1,0) @ grads
+
+#     return ggn_hessian
+
+def GNN_posterior_precision(model, task_type, parametersubset=None, dataloader = None, batch_size=16, xs=None, prior_sigma=None, target_sigma=None, device="cpu", batching=True):
+    if ((dataloader is not None) and (xs is not None)) or ((xs is None) and (dataloader is None)):
+        raise ValueError("Either dataloader or xs must be provided")
+    if parametersubset is None:
+        parametersubset = dict(model.named_parameters())
+    #    num_params =  sum([p[1].numel() for p in model.named_parameters()])
+    #else:
+    num_params =  sum([p.numel() for p in parametersubset.values()])
+
+    if task_type == "regression": 
+        # Here \nabla^2 log p(y|x, \theta) = -1/\sigma^2 
+        # since p(y|x, \theta) = Normal(y|f(x, \theta), \sigma^2)
+        H_factor = 1/target_sigma**2
+    elif task_type == "classification":
+        # Here we use cross entropy, ln p(y|x, \theta) = ln Categorical(y|f(x, \theta)) = ln \prod_i (exp(f_i)/\sum_j exp(f_j))^{y_i} = \sum_i y_i f_i - \sum_i ln \sum_j exp(f_j)
+        # and \nabla^2 log p(y|x, \theta) = 1
+        H_factor = -1
+    else:
+        raise ValueError("task_type not recognized")
+    if prior_sigma is None:
+        regularization = torch.zero(num_params)
+    else:
+        regularization = torch.eye(num_params)*1/prior_sigma**2
+    if batching:
+        ggn_hessian = torch.zeros((num_params, num_params))
+        # If no dataloader is provided, create one
+        if dataloader is None:
+            dataloader = DataLoader(TensorDataset(xs, xs), batch_size=batch_size)
+        for i, (x, y) in enumerate(dataloader):  # loop over batches
+            x_batch, y_batch = x.to(device), y.to(device)
+            ggn_hessian += GNN_hessian(model, x_batch, parametersubset=parametersubset)
+    else:
+        ggn_hessian = GNN_hessian(model, xs, parametersubset=parametersubset)
+    print(f"{ggn_hessian = } before regularization and factoring")
+    print(f"{regularization = }")
+    print(f"{H_factor = }")
+    ggn_hessian *= H_factor
+    ggn_hessian += regularization
+    return ggn_hessian

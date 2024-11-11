@@ -20,6 +20,7 @@ from utils import set_weights_old, extract_parameters, set_weights
 from laplace import Laplace
 from torch.utils.data import DataLoader, TensorDataset
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
+from torchdiffeq import odeint
 
 def fn1(xs):
     return torch.column_stack([xs[:,0], xs[:,1]])
@@ -299,11 +300,16 @@ class Manifold():
                     print(f"{epoch = }, {accum_loss = }\t\t ", end="\r")
         self.register_this_as_map()
 
-    def register_this_as_map(self):
-        self.MAP = torch.nn.utils.parameters_to_vector(model.parameters()).clone().detach()
-        self.LA.fit(self.train_loader)
-        self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
-
+    def register_this_as_map(self, MAP=None):
+        if MAP is None:
+            self.MAP = torch.nn.utils.parameters_to_vector(model.parameters()).clone().detach()
+            self.LA.fit(self.train_loader)
+            self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
+        else:
+            self.MAP = MAP.clone().detach()
+            self.LA.fit(self.train_loader)
+            self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
+            
     def set_to_map(self):
         if self.MAP is not None:
             torch.nn.utils.vector_to_parameters(self.MAP, self.model.parameters())
@@ -335,7 +341,7 @@ class Manifold():
         #print(f"{self.target_sigma = }")
 
         loss_from_pred = self.criterion(pred, target)*x_train.shape[0]/pred.shape[0] / (2 * self.target_sigma**2)
-        loss = loss_from_pred #+ param_norm
+        loss = loss_from_pred + param_norm
         return loss #self.mse_loss(x, y) + self.regularization * torch.nn.utils.parameters_to_vector(model.parameters()).norm()**2
 
     def gradient_bck(self):
@@ -388,9 +394,28 @@ class Manifold():
         acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
         return torch.cat([v, acc]).to("cpu").detach().numpy()
     
-    def expmap(self, theta, v):
+    def expmap(self, theta, v, rtol=1e-3, atol=1e-3):
         init = torch.cat([theta, v]).to("cpu").detach().numpy()
-        solution = solve_ivp(self.ode_fun, [0, 1], init, dense_output=True, rtol=1e-3, atol=1e-3)
+        solution = solve_ivp(self.ode_fun, [0, 1], init, dense_output=True, rtol=rtol, atol=atol)
+        return solution
+
+
+    # Analytic derivation of the ODE
+    def ode_fun_torch_(self, t, state):
+        state_tensor = state
+        theta = state_tensor[:self.MAP.shape[0]]
+        v = state_tensor[self.MAP.shape[0]:]
+        self.set_weights(theta)
+        grad_val = self.gradient()
+        hess_val = self.hess()
+        
+        acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
+        return torch.cat([v, acc])
+        
+    def expmap_torch(self, theta, v, numsteps=2, rtol=1e-3, atol=1e-3, method="rk4", **kwargs):
+        init = torch.cat([theta, v])
+        ts = torch.linspace(0, 1, numsteps)
+        solution = odeint(self.ode_fun_torch_, init, ts, rtol=rtol, atol=atol, method=method)
         return solution
 
     def metric(self):
@@ -406,17 +431,55 @@ print([p for p in model.parameters()])
 mymanifold = Manifold(model, task_type="regression", prior_sigma=prior_log_sigma.exp(), target_sigma=target_log_sigma.exp())
 print(f"{mymanifold.MAP = }")
 mymanifold.set_train_data(x_train, y_train)
-mymanifold.register_this_as_map()
+mymanifold.register_this_as_map(MAP)
 # mymanifold.fit(epochs=5000, lr=0.1, verbose=True)
 mymanifold.gradient()
 
-ts = np.linspace(0, 1, 100)
-
 sample = mymanifold.velocity_sample(n_samples=1)[0]
-sol = mymanifold.expmap(mymanifold.MAP, sample)
 
+sample = torch.tensor([-1.1, 1.1])
+sol_torch_ = mymanifold.expmap_torch(mymanifold.MAP, sample, numsteps=2, atol=1e-3, rtol=1e-3)
+print(f"{sol_torch_[-1] = }")
+sol_torch_ = mymanifold.expmap_torch(mymanifold.MAP, sample, numsteps=2, atol=1e-3, rtol=1e-3, method="adaptive_heun")
+print(f"{sol_torch_[-1] = }")
+
+
+
+sol_scipy_ = mymanifold.expmap(mymanifold.MAP, sample, atol=1e-3, rtol=1e-3)
+
+sol_scipy_.t.shape
+
+print(f"{sol_torch_[-1] = }")
+print(f"{sol_scipy_.sol(1) = }")
+
+
+# sample one point from the posterior
+# plot the trajectory of the geodesic
+ts = np.linspace(0, 1, 100)
+#sample = mymanifold.velocity_sample(n_samples=1)[0]
+sol = mymanifold.expmap(mymanifold.MAP, sample)
 fig, ax = plt.subplots() 
 ax.plot(sol.sol(ts)[0], sol.sol(ts)[1])
+ax.scatter(x=posterior_samples[:,0], y=posterior_samples[:,1], c="red")
+ax.scatter(x=mymanifold.MAP[0], y=mymanifold.MAP[1], c="blue")
+ax.scatter(x=sample[0] + mymanifold.MAP[0], y=sample[1]+mymanifold.MAP[1], c="green")
+# plot the laplace approximation
+stds = torch.tensor([1, 2, 3, 4])
+cov = la.posterior_covariance; mean = la.mean
+eigvals, eigvecs = torch.linalg.eigh(cov)
+angle = torch.rad2deg(torch.atan2(eigvecs[1, 0], eigvecs[0, 0]))
+width, height = torch.sqrt(eigvals).unsqueeze(1) * 2 * stds.unsqueeze(0)
+for curveno in range(stds.shape[0]):
+    ellipse = plt.matplotlib.patches.Ellipse(mean, width[curveno], height[curveno], angle=angle, fill=False, edgecolor="blue", linewidth=2)
+    ax.add_patch(ellipse)
+ax.set_xlim(-.1, 2.5)
+ax.set_ylim(-2, 2)
+
+ts = np.linspace(0, 1, 100)
+#sample = mymanifold.velocity_sample(n_samples=1)[0]
+sol_torch = mymanifold.expmap_torch(mymanifold.MAP, sample, method="adaptive_heun")
+fig, ax = plt.subplots() 
+ax.scatter(sol_torch[-1,0].detach(), sol_torch[-1,1].detach(), c="black")
 ax.scatter(x=posterior_samples[:,0], y=posterior_samples[:,1], c="red")
 ax.scatter(x=mymanifold.MAP[0], y=mymanifold.MAP[1], c="blue")
 ax.scatter(x=sample[0] + mymanifold.MAP[0], y=sample[1] +mymanifold.MAP[1], c="green")
@@ -431,3 +494,43 @@ for curveno in range(stds.shape[0]):
     ax.add_patch(ellipse)
 ax.set_xlim(-.1, 1.5)
 ax.set_ylim(-2, 2)
+
+
+
+
+
+
+
+
+
+
+
+# Sample from the Laplace approximation, and get geodesic exp-point.
+# And then plot the lot.
+end_points_list = []
+samples_list = []
+
+for i in range(100):
+    print(f"{i = }", end="\r")
+    sample = mymanifold.velocity_sample(n_samples=1)[0]
+    sol = mymanifold.expmap(mymanifold.MAP, sample)
+    end_points_list.append(sol.sol(1))
+    samples_list.append(sample)
+end_points = np.stack(end_points_list)
+samples = np.stack(samples_list)
+
+fig, ax = plt.subplots() 
+s=5
+sns.kdeplot(x=end_points[:,0], y=end_points[:,1], ax=ax, fill=True, levels=10)
+ax.scatter(x=posterior_samples[:,0], y=posterior_samples[:,1], c="red", s=s)
+ax.scatter(x=mymanifold.MAP[0], y=mymanifold.MAP[1], c="blue", s=s)
+ax.scatter(x=end_points[:,0], y=end_points[:,1], c="green", s=s)
+#ax.scatter(x=samples[:,0] + mymanifold.MAP[0].numpy(), y=samples[:,1] +mymanifold.MAP[1].numpy(), c="grey", s=s)
+stds = torch.tensor([1, 2])
+cov = la.posterior_covariance; mean = la.mean
+eigvals, eigvecs = torch.linalg.eigh(cov)
+angle = torch.rad2deg(torch.atan2(eigvecs[1, 0], eigvecs[0, 0]))
+width, height = torch.sqrt(eigvals).unsqueeze(1) * 2 * stds.unsqueeze(0)
+for curveno in range(stds.shape[0]):
+    ellipse = plt.matplotlib.patches.Ellipse(mean, width[curveno], height[curveno], angle=angle, fill=False, edgecolor="blue", linewidth=2)
+    ax.add_patch(ellipse)

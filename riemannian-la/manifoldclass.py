@@ -93,7 +93,7 @@ class Manifold():
         #print(f"{N = }")
         #print(f"{self.target_sigma = }")
 
-        loss_from_pred = self.criterion(pred, target)*x_train.shape[0]/pred.shape[0] / (2 * self.target_sigma**2)
+        loss_from_pred = self.criterion(pred, target) * self.x_train.shape[0]/pred.shape[0] / (2 * self.target_sigma**2)
         loss = loss_from_pred + param_norm
         return loss #self.mse_loss(x, y) + self.regularization * torch.nn.utils.parameters_to_vector(model.parameters()).norm()**2
 
@@ -115,7 +115,7 @@ class Manifold():
     
     def hess(self):
         self.LA.fit(self.train_loader)
-        return la.posterior_precision
+        return self.LA.posterior_precision
 
     def posterior_sample(self, n_samples=1):
         samples = torch.distributions.MultivariateNormal(self.MAP, self.MAP_covariance).sample((n_samples,))
