@@ -195,6 +195,7 @@ print("Auto")
 evals(mcmc_auto)
 
 
+
 ###################
 # Finding MAP solution:
 model = MODEL(num_params=M, fn=FN, prior_log_sigma=prior_log_sigma)

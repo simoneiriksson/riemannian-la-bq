@@ -1,0 +1,17 @@
+pyro-ppl==1.9.1
+numpy==1.26.4
+setuptools
+torch==2.5.1
+#torchmetrics==1.6.0
+#torchvision==0.20.1
+#torchviz==0.0.2
+
+curvlinops_for_pytorch==2.0.1
+
+laplace_torch==0.2.1
+matplotlib==3.9.3
+pandas==2.2.3
+scikit_learn==1.5.2
+scipy==1.14.1
+seaborn==0.13.2
+torchdiffeq==0.2.5

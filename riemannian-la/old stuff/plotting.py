@@ -16,6 +16,8 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
                 sns.histplot(post, kde=True, ax=ax, stat="density")
                 xs = torch.linspace(post.min(), post.max(), 100)
                 print(f"{i=}")
+                #print(f"{LA_loc[i]=}")
+                #print(f"{LA_cov[i,i]=}")
                 sns.lineplot(x=xs, y=torch.distributions.Normal(LA_loc[i], torch.sqrt(LA_cov[i,i])).log_prob(xs).exp(), ax=ax, color="red")
                 ax.set_xlabel(f"Dim {i}")
             #i=0; j=1
@@ -32,7 +34,7 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
                 
                 ax.set_xlabel(f"Dim {i}")
                 ax.set_ylabel(f"Dim {j}")
-                stds = torch.tensor([1, 2, 3, 4])
+                stds = torch.tensor([1, 2])
 
 
                 # plot the posterior distribution
@@ -53,12 +55,12 @@ def distributions_plot(posterior_samples_tensor, LA_loc, LA_cov):
 
 
                 # Set the limits to be the smallest squuare that includes the image:
-                ax.set_aspect('equal', 'box')
+                #ax.set_aspect('equal', 'box')
                 ax.legend()
-                # xlim = ax.get_xlim()
-                # ylim = ax.get_ylim()
-                # ax.set_xlim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
-                # ax.set_ylim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+                #xlim = ax.get_xlim()
+                #ylim = ax.get_ylim()
+                #ax.set_xlim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+                #ax.set_ylim(min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
                 # #ax.set_xlim(posterior_samples_tensor[:,i].min(), posterior_samples_tensor[:,i].max())
                 # #ax.set_ylim(posterior_samples_tensor[:,j].min(), posterior_samples_tensor[:,j].max())
 

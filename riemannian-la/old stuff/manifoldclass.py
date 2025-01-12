@@ -55,7 +55,7 @@ class Manifold():
 
     def register_this_as_map(self, MAP=None):
         if MAP is None:
-            self.MAP = torch.nn.utils.parameters_to_vector(model.parameters()).clone().detach()
+            self.MAP = torch.nn.utils.parameters_to_vector(self.model.parameters()).clone().detach()
             self.LA.fit(self.train_loader)
             self.MAP_covariance = self.LA.posterior_covariance.clone().detach()
         else:
