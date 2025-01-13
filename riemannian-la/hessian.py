@@ -49,11 +49,12 @@ def hessian_dict_to_matrix(hess_dict, verbose=False, device="cpu"):
         mat = hess_dict[key1][key1]  # take the diagonal element. This element is a tensor that has the dimensionality = parameter dimensionality + parameter dimensionality 
         param_dims = len(mat.shape)//2  # get the number of dimensions of the parameter tensor
         param_shape = mat.shape[0:param_dims]  # get the shape of the parameter tensor (which is the first half of the dimensions of the diagonal element)
-        param_numel = torch.prod(torch.tensor(param_shape)).item()  # get the number of elements in the parameter
+        param_numel = int(torch.prod(torch.tensor(param_shape)).item())  # get the number of elements in the parameter
         param_name = key1
         parameter_properties[param_name] = {'param_shape': param_shape, 'param_dims': param_dims, 'param_numel': param_numel}  # save information in dict
         hess_size += param_numel
-    hess_matrix = torch.zeros((hess_size, hess_size), device=device)
+    #print(hess_size)
+    hess_matrix = torch.zeros((int(hess_size), int(hess_size)), device=device)
     index1 = 0
     index2 = 0
     # loop over the hessian dictionary and fill in the hessian matrix
@@ -63,8 +64,9 @@ def hessian_dict_to_matrix(hess_dict, verbose=False, device="cpu"):
         for key2 in hess_dict[key1].keys():
             local_hess = hess_dict[key1][key2]
             numel2 = parameter_properties[key2]['param_numel']
-            flatten_key1 = torch.flatten(local_hess, start_dim=0, end_dim=dim1-1)
-            local_hess_flat = torch.flatten(flatten_key1, start_dim=1)
+            dim2 = parameter_properties[key2]['param_dims']
+            flatten_key1 = torch.flatten(local_hess, start_dim=0, end_dim=min(dim1-1,0))
+            local_hess_flat = torch.flatten(flatten_key1, start_dim=min(dim2, 1))
             hess_matrix[index1:index1+numel1, index2:index2+numel2] = local_hess_flat
             index2 += numel2
         index1 += numel1
@@ -114,10 +116,10 @@ if __name__ == "main":
   preds = model(xs)
   print(f"{preds = }")
   loss(preds, ys)
-  H_dict = hessian_from_model_loss_and_data(model, loss, xs, ys)
-  print(f"{H_dict = }")
+  hess_dict = hessian_from_model_loss_and_data(model, loss, xs, ys)
+  print(f"{hess_dict = }")
 
-  H, params = hessian_dict_to_matrix(H_dict)
+  H, params = hessian_dict_to_matrix(hess_dict)
   print(f"{H = }") # should return a 2x2 matrix, With 5. in the counterdiagonal and zero in the diagonal
   # tensor([[0., 5.], [5., 0.]])
 
