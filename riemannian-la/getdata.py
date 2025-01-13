@@ -75,7 +75,7 @@ def gen_log_regression_data(num_train_samples=10,
 if __name__ == "main":
     # test the data generation functions
     # Linear regression:
-    train_loader, test_loader = gen_curve_regression_data(num_train_samples=100)
+    train_loader, test_loader = gen_linear_regression_data(num_train_samples=100)
     X, y = next(iter(train_loader))
     plt.scatter(X, y)
 
