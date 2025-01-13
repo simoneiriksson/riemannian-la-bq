@@ -1,7 +1,5 @@
-#from ..riemannian_la.getdata import gen_linear_regression_data, gen_log_regression_data
-from ..getdata import gen_linear_regression_data, gen_log_regression_data
-
-import riemannian-la.getdata
+from riemannian_la.getdata import gen_linear_regression_data, gen_log_regression_data
+from matplotlib import pyplot as plt
 
 # test the data generation functions
 # Linear regression:
