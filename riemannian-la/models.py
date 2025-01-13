@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from hessian import hessian_from_func, make_functional_fwd, functional_loss, hessian_from_model_loss_and_data, hessian_dict_to_matrix
 from matplotlib import pyplot as plt
+import torch.nn as nn
 
 def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
     def banana(input_2d):
@@ -21,11 +22,6 @@ def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
         return normalization * torch.exp(exponent)
     return banana
 
-def sum_loss():
-    def fn(preds, targets):
-        return torch.sum(preds)
-    return fn
-
 # a class that takes a function as an argument and returns a torch model
 class Model_from_func(torch.nn.Module):
     def __init__(self, function, input_shape):
@@ -36,18 +32,44 @@ class Model_from_func(torch.nn.Module):
     def forward(self, x=None):
         return self.function(self.params)
 
-def plot_2d_func(func, x_range, y_range, num_points=100):
-    xs = np.linspace(x_range[0], x_range[1], num_points)
-    ys = np.linspace(y_range[0], y_range[1], num_points)
-    X, Y = np.meshgrid(xs, ys)
-    Z = np.zeros_like(X)
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            Z[i, j] = func(torch.tensor([X[i, j], Y[i, j]]))
-    plt.contour(X, Y, Z, levels=100)
-    plt.show()
+
+class LinearModel(torch.nn.Module):
+    def __init__(self, num_features=1, num_output=1, bias=False):
+        super(LinearModel, self).__init__()
+        self.lin = torch.nn.Linear(num_features, 1, bias=True)
+        torch.nn.init.constant_(self.lin.weight, 1.0)
+        torch.nn.init.constant_(self.lin.bias, 2.0)
+    def forward(self, x):
+        return self.lin(x)
+
+
+class LogregModel(torch.nn.Module):
+    def __init__(self, num_features=2, num_classes=2, bias=True):
+        super(LogregModel, self).__init__()
+        self.lin = torch.nn.Linear(num_features, 1, bias=bias)
+        torch.nn.init.constant_(self.lin.weight, 1.0)
+        torch.nn.init.constant_(self.lin.bias, 2.0)
+    def forward(self, x):
+        return self.lin(x)
 
 if __name__ == "__main__":
+    # testing the models
+
+    def sum_loss():
+        def fn(preds, targets):
+            return torch.sum(preds)
+        return fn
+    def plot_2d_func(func, x_range, y_range, num_points=100):
+        xs = np.linspace(x_range[0], x_range[1], num_points)
+        ys = np.linspace(y_range[0], y_range[1], num_points)
+        X, Y = np.meshgrid(xs, ys)
+        Z = np.zeros_like(X)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                Z[i, j] = func(torch.tensor([X[i, j], Y[i, j]]))
+        plt.contour(X, Y, Z, levels=100)
+        plt.show()
+
     # define a "banana" function
     banana_function = functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0)
 
