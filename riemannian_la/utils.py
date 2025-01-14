@@ -25,4 +25,15 @@ def iid_gaussian_prior(prior_sigma=1.0):
         return parameters.pow(2).sum()/(2 * prior_sigma**2)
     return fn
 
-NegLogLik_classification = lambda pred, target: torch.nn.CrossEntropyLoss(reduction="sum")(pred, target)  # should there be a multiplier here?
+def NegLogLik_classification():
+    def fn(pred, target):
+        return torch.nn.CrossEntropyLoss(reduction="sum")(pred, target)
+    return fn
+
+def loss_func_from_target_sigma(loss_fn, target_sigma):
+    if loss_fn is None and target_sigma is not None:  # assume regression
+        loss_fn = NegLogLik_regression(target_sigma=target_sigma)
+
+    if loss_fn is None and target_sigma is None:  # assume classification
+        loss_fn = NegLogLik_classification()
+    return loss_fn
