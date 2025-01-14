@@ -1,5 +1,5 @@
-from riemannian_la.models import Model_from_func, hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
-from riemannian_la.models import functional_banana
+from riemannian_la.hessian import hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
+from riemannian_la.models import functional_banana, Model_from_func
 from matplotlib import pyplot as plt
 import torch
 import numpy as np

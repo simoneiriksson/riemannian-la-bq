@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
-from utils import tensify
+from utils import tensify, loss_func_from_target_sigma
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
 from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
@@ -24,19 +24,15 @@ class Laplace():
         self.target_sigma = target_sigma
         self.loss_fn = loss_fn
 
-        assert (prior_logprob is None) ^ (prior_sigma is not None), "Either prior_logprob or prior_sigma, but not both must be specified"
+        assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
 
-        if prior_sigma is not None:  # assume Gaussian iid prior if prior_sigma is specified
-            self.prior_logprob = iid_gaussian_prior(prior_sigma=prior_sigma)
+        # if prior_sigma is not None:  # assume Gaussian iid prior if prior_sigma is specified
+        #     self.prior_logprob = iid_gaussian_prior(prior_sigma=prior_sigma)
 
-        assert (target_sigma is not None) and  (loss_fn is None), "Can't specify both target_sigma and loss_fn at the same time"
+        assert (target_sigma is None) or (loss_fn is None), "Can't specify both target_sigma and loss_fn at the same time"
 
-        if loss_fn is None and target_sigma is not None:  # assume regression
-            self.loss_fn = NegLogLik_regression(target_sigma=target_sigma)
+        self.loss_fn = loss_func_from_target_sigma(loss_fn, target_sigma)
 
-        if loss_fn is None and target_sigma is None:  # assume classification
-            self.loss_fn = NegLogLik_classification()
-        
         if parametersubset is None:
             self.parametersubset = dict(model.named_parameters())
         else:
@@ -52,10 +48,11 @@ class Laplace():
         else: dataloader = self.dataloader
 
         if fitting_type == "hessian":
-            self.gnn_pre_hessian = hessian_from_loader(self.model, loss_fn=self.loss_fn, xs=xs, ys=ys)
+            self.hessian = hessian_from_loader(model=self.model, dataloader = dataloader, 
+                                               loss_fn=self.loss_fn, parametersubset=None, device=self.device)
 
         elif fitting_type == "GGN":
-            self.gnn_hessian = GGN_hessian_from_loader(self.model, 
+            self.hessian = GGN_hessian_from_loader(self.model, 
                                         dataloader=dataloader, 
                                         loss_fn=self.loss_fn,
                                         target_sigma=self.target_sigma,
@@ -63,12 +60,15 @@ class Laplace():
                                         device=self.device
                                         ).detach()
         if self.prior_sigma is not None:
-            self.regularization = torch.eye(self.num_params, device=self.device) / self.prior_sigma**2
+            if self.prior_sigma == 0:
+                self.regularization = torch.zeros_like(self.hessian)
+            else:
+                self.regularization = torch.eye(self.num_params, device=self.device) / self.prior_sigma**2
         else:
             H = hessian_from_func(self.prior_logprob, self.mean)
             self.regularization = -H
         
-        self.precision = self.gnn_pre_hessian + self.regularization
+        self.precision = self.hessian + self.regularization
         self.is_fitted = True
 
         self.scale = _precision_to_scale_tril(self.precision)
@@ -123,3 +123,5 @@ class Laplace():
 
     def __str__(self):
         return f"Laplace approximation for model {self.model} with task type {self.task_type} and parameters {self.parametersubset}"
+
+

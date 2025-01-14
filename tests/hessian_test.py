@@ -66,3 +66,4 @@ print(f"{H = }")  # should return a 1x1 matrix with 0.0
 dataloader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(xs, ys), batch_size=1)
 x_batch, y_batch = next(iter(dataloader))
 hess_mat = hessian_from_loader(model, dataloader = dataloader, loss_fn=loss, parametersubset=None)
+print(f"{hess_mat = }")  # should return a 2x2 matrix tensor([[0., 5.], [5., 0.]])
