@@ -15,7 +15,7 @@ def hessian_from_func(func, x):
   H = H_func(x)
   return H
 
-def make_functional_fwd(_model):
+def make_functional_fwd_xs(_model):
   def fn(parameters, xs):
     return functional_call(_model, parameters, xs)
   return fn
@@ -28,13 +28,27 @@ def functional_loss(model_func, loss_func):
     return loss
   return fn
 
-def hessian_from_model_loss_and_data(model, loss_func, xs, ys):
-  model_functional = make_functional_fwd(model)  # get me the functional version of the model
-  loss_functional = functional_loss(model_functional, loss_func)  # get me the functional version of the loss
+def hessian_from_model_loss_and_data(model, parametersubset=None, loss_fn=None, xs=None, ys=None):
+  model_functional = make_functional_fwd_xs(model)  # get me the functional version of the model
+  if parametersubset is None:
+    parametersubset = dict(model.named_parameters())
+  else:
+    parametersubset = parametersubset
+  loss_functional = functional_loss(model_functional, loss_fn)  # get me the functional version of the loss
   H_func = hessian(loss_functional, argnums=0)
-  params = dict(model.named_parameters())
-  H = H_func(params, xs, ys)
+  H = H_func(parametersubset, xs, ys)
   return H
+
+def hessian_from_loader(model, dataloader = None, loss_fn=None, parametersubset=None, device="cpu"):
+    if parametersubset is None:
+        parametersubset = dict(model.named_parameters())
+    num_params =  sum([p.numel() for p in parametersubset.values()])
+    ggn_hessian = torch.zeros((num_params, num_params), device=device)
+    for i, (x, y) in enumerate(dataloader):  # loop over batches
+        x_batch = x.to(device)
+        y_batch = y.to(device)
+        ggn_hessian += hessian_from_model_loss_and_data(model, x_batch, y_batch, parametersubset=parametersubset, loss_fn=loss_fn).detach().clone()
+    return ggn_hessian
 
 def hessian_dict_to_matrix(hess_dict, verbose=False, device="cpu"):
     hess_size=0
