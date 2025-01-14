@@ -7,8 +7,7 @@ def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):
     N = list(grad_dict.values())[0].shape[0]
     output_shape = list(list(grad_dict.values())[0].shape[1:output_dims+1])
     grad_size = int(sum([torch.prod(torch.tensor(grad_dict[key][0].shape[output_dims:])) for key in grad_dict.keys()]))
-    print(f"{grad_size=}")
-   
+    
     grad_vector = torch.zeros((N, *output_shape, grad_size), device=device)
     index = 0
     for name, value in grad_dict.items():
@@ -18,10 +17,9 @@ def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):
         index += numel
     return grad_vector
 
-
 def make_functional_fwd(_model):
-    def fn(parameters, data):
-        return functional_call(_model, parameters, (data.unsqueeze(0),)).squeeze(0)
+    def fn(parameters, xs):
+        return functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0)
     return fn
 
 def GGN_hessian(model, xs, ys, loss_fn=None, target_sigma=None, parametersubset=None):
