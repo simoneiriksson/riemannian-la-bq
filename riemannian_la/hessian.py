@@ -81,8 +81,14 @@ def hessian_dict_to_matrix(hess_dict, verbose=False, device="cpu"):
             local_hess = hess_dict[key1][key2]
             numel2 = parameter_properties[key2]['param_numel']
             dim2 = parameter_properties[key2]['param_dims']
-            flatten_key1 = torch.flatten(local_hess, start_dim=0, end_dim=min(dim1-1,0))
+            #print(f"{key1=}, {key2=}, {numel1=}, {numel2=}")
+            #print(f"{dim1=}, {dim2=}")
+            #print(f"{local_hess.shape=}")
+            flatten_key1 = torch.flatten(local_hess, start_dim=0, end_dim=max(dim1-1,0))
+            #print(f"{flatten_key1.shape=}")
             local_hess_flat = torch.flatten(flatten_key1, start_dim=min(dim2, 1))
+            #print(f"{local_hess_flat.shape=}")
+            #print(f"{index1=}, {index2=}")
             hess_matrix[index1:index1+numel1, index2:index2+numel2] = local_hess_flat
             index2 += numel2
         index1 += numel1
