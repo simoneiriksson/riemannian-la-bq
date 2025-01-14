@@ -28,7 +28,7 @@ def functional_loss(model_func, loss_func):
     return loss
   return fn
 
-def hessian_from_model_loss_and_data(model, parametersubset=None, loss_fn=None, xs=None, ys=None):
+def hessian_from_model_loss_and_data(model, loss_fn=None, xs=None, ys=None, parametersubset=None):
   model_functional = make_functional_fwd_xs(model)  # get me the functional version of the model
   if parametersubset is None:
     parametersubset = dict(model.named_parameters())
@@ -47,7 +47,9 @@ def hessian_from_loader(model, dataloader = None, loss_fn=None, parametersubset=
     for i, (x, y) in enumerate(dataloader):  # loop over batches
         x_batch = x.to(device)
         y_batch = y.to(device)
-        ggn_hessian += hessian_from_model_loss_and_data(model, x_batch, y_batch, parametersubset=parametersubset, loss_fn=loss_fn).detach().clone()
+        hessian_dict = hessian_from_model_loss_and_data(model, xs=x_batch, ys=y_batch, parametersubset=parametersubset, loss_fn=loss_fn)
+        hessian_matrix, _ = hessian_dict_to_matrix(hessian_dict)
+        ggn_hessian += hessian_matrix.detach().clone()
     return ggn_hessian
 
 def hessian_dict_to_matrix(hess_dict, verbose=False, device="cpu"):

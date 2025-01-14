@@ -1,5 +1,5 @@
 import torch
-from riemannian_la.hessian import hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
+from riemannian_la.hessian import hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader
 
 # run a test of hessian_from_func
 A = torch.tensor([[1.0, 0.0], [1.0, 1.0]])
@@ -53,3 +53,16 @@ print(f"{H = }") # should return a 2x2 matrix, With 5. in the counterdiagonal an
 for param in params.keys():
     print(f"{param = }")
     print(f"{params[param] = }")
+
+# test with a subset of parameters
+parametersubset = dict(model.lin1.named_parameters())
+print(f"{parametersubset = }")
+hess_dict = hessian_from_model_loss_and_data(model, loss_fn=loss, xs=xs, ys=ys, parametersubset=parametersubset)
+print(f"{hess_dict = }")
+H, params = hessian_dict_to_matrix(hess_dict)
+print(f"{H = }")  # should return a 1x1 matrix with 0.0
+
+# test with a dataloader
+dataloader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(xs, ys), batch_size=1)
+x_batch, y_batch = next(iter(dataloader))
+hess_mat = hessian_from_loader(model, dataloader = dataloader, loss_fn=loss, parametersubset=None)
