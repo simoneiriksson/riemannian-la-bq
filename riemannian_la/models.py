@@ -5,7 +5,6 @@
 
 import numpy as np
 import torch
-from hessian import hessian_from_func, make_functional_fwd, functional_loss, hessian_from_model_loss_and_data, hessian_dict_to_matrix
 from matplotlib import pyplot as plt
 import torch.nn as nn
 
@@ -19,7 +18,7 @@ def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
         normalization = torch.tensor(1 / (2 * torch.pi * sigma_x * sigma_y))
         exponent = -0.5 * ((x / sigma_x)**2 + (y_transformed / sigma_y)**2)
         #return torch.log(normalization) + exponent
-        return normalization * torch.exp(exponent)
+        return (normalization * torch.exp(exponent)).unsqueeze(0).unsqueeze(0)
     return banana
 
 # a class that takes a function as an argument and returns a torch model
@@ -34,20 +33,10 @@ class Model_from_func(torch.nn.Module):
 
 
 class LinearModel(torch.nn.Module):
-    def __init__(self, num_features=1, num_output=1, bias=False):
+    def __init__(self, num_features=2, num_outputs=1, bias=False):
         super(LinearModel, self).__init__()
-        self.lin = torch.nn.Linear(num_features, 1, bias=True)
-        torch.nn.init.constant_(self.lin.weight, 1.0)
-        torch.nn.init.constant_(self.lin.bias, 2.0)
-    def forward(self, x):
-        return self.lin(x)
-
-
-class LogregModel(torch.nn.Module):
-    def __init__(self, num_features=2, num_classes=2, bias=True):
-        super(LogregModel, self).__init__()
-        self.lin = torch.nn.Linear(num_features, 1, bias=bias)
-        torch.nn.init.constant_(self.lin.weight, 1.0)
-        torch.nn.init.constant_(self.lin.bias, 2.0)
+        self.lin = torch.nn.Linear(num_features, num_outputs, bias=bias)
+        torch.nn.init.constant_(self.lin.weight, 0.0)
+        torch.nn.init.constant_(self.lin.bias, 0.0)
     def forward(self, x):
         return self.lin(x)
