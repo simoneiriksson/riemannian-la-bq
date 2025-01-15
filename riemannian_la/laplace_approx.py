@@ -7,6 +7,11 @@ from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, he
 from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
+def make_functional_fwd_xs(_model):
+    def fn(parameters, xs):
+        return functional_call(_model, parameters, xs)
+    return fn
+
 class Laplace():
     def __init__(self, model, parametersubset=None, dataloader=None, 
                  prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
@@ -85,19 +90,39 @@ class Laplace():
         self.posterior_samples = self.mean + eps @ self.scale.T 
         return self.posterior_samples
 
-    def functional_model(self, parameters, xs):
+    def vector_to_parameterdict(self, vector):
+        counter = 0
+        parameter_dict = {}
+        for key in self.parametersubset.keys():
+            parameter_dict[key] = vector[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
+            counter += self.parametersubset[key].numel()
+        return parameter_dict
+
+    def functional_model_bck(self, parameters, xs):
         counter = 0
         for key in self.parametersubset.keys():
             self.parametersubset[key].data = parameters[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
             counter += self.parametersubset[key].numel()
         return self.model(xs)
 
-    def make_functional_fwd_xs(_model):
-        def fn(parameters, xs):
-            return functional_call(_model, parameters, xs)
-        return fn
-
     def predictive_posterior_samples(self, xs=None):
+        if not self.is_fitted:
+            raise ValueError("Model has not been fitted yet")
+
+        if not hasattr(self, "posterior_samples"):
+            self.make_posterior_sample(self.n_posterior_samples)
+
+        # loop over posterior samples
+        for sample_no, posterior_sample in enumerate(self.posterior_samples):
+            functional_model = make_functional_fwd_xs(self.model)
+            param_dict = self.vector_to_parameterdict(posterior_sample)
+            prediction = functional_model(param_dict, xs)
+            if sample_no == 0: 
+                predictions = torch.zeros((len(self.posterior_samples), *prediction.shape), device=self.device)
+            predictions[sample_no] = prediction
+        return predictions
+
+    def predictive_posterior_samples_bck(self, xs=None):
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
 
@@ -119,6 +144,8 @@ class Laplace():
             self.parametersubset[key].data = parametersubset_bck[key]
             counter += self.parametersubset[key].numel()
         return predictions
+
+
 
     def forward(self, xs):
         return self.predictive_posterior_samples(xs).mean(dim=0)
