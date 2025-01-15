@@ -18,7 +18,7 @@ def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
         normalization = torch.tensor(1 / (2 * torch.pi * sigma_x * sigma_y))
         exponent = -0.5 * ((x / sigma_x)**2 + (y_transformed / sigma_y)**2)
         #return torch.log(normalization) + exponent
-        return (normalization * torch.exp(exponent)).unsqueeze(0).unsqueeze(0)
+        return (normalization * torch.exp(exponent)).unsqueeze(0)
     return banana
 
 # a class that takes a function as an argument and returns a torch model
