@@ -1,3 +1,8 @@
+import os
+import sys
+# set working directory
+print(os.getcwd())
+os.chdir("../riemannian_la")
 import torch
 from riemannian_la.hessian import hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader
 
