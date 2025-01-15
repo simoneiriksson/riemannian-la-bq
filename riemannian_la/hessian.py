@@ -5,7 +5,7 @@ and the hessian of a model at a point
 
 import torch
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
-
+from utils import functional_loss, make_functional_fwd_xs
 
 def hessian_from_func(func, x):
   """
@@ -15,18 +15,7 @@ def hessian_from_func(func, x):
   H = H_func(x)
   return H
 
-def make_functional_fwd_xs(_model):
-  def fn(parameters, xs):
-    return functional_call(_model, parameters, xs)
-  return fn
 
-def functional_loss(model_func, loss_func):
-  # Returns a function that takes parameters, data, and target and returns the loss
-  def fn(parameters, xs, ys):
-    pred = model_func(parameters, xs)
-    loss = loss_func(pred, ys)
-    return loss
-  return fn
 
 def hessian_from_model_loss_and_data(model, loss_fn=None, xs=None, ys=None, parametersubset=None):
   model_functional = make_functional_fwd_xs(model)  # get me the functional version of the model

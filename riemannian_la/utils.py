@@ -1,4 +1,5 @@
 import torch
+from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
 def tensify(variable):
     if isinstance(variable, torch.Tensor):
@@ -37,3 +38,26 @@ def loss_func_from_target_sigma(loss_fn, target_sigma):
     if loss_fn is None and target_sigma is None:  # assume classification
         loss_fn = NegLogLik_classification()
     return loss_fn
+
+def make_functional_fwd_xs(_model):
+  def fn(parameters, xs):
+    return functional_call(_model, parameters, xs)
+  return fn
+
+def functional_loss(model_func, loss_func):
+  # Returns a function that takes parameters, data, and target and returns the loss
+  def fn(parameters, xs, ys):
+    pred = model_func(parameters, xs)
+    loss = loss_func(pred, ys)
+    return loss
+  return fn
+
+
+def vector_to_parameterdict(vector, parametersubset=None):
+    # Take a vector and return a dictionary of parameters with the same structure as parametersubset
+    counter = 0
+    parameter_dict = {}
+    for key in parametersubset.keys():
+        parameter_dict[key] = vector[counter:counter+parametersubset[key].numel()].view(parametersubset[key].shape)
+        counter += parametersubset[key].numel()
+    return parameter_dict

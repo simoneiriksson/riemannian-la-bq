@@ -1,22 +1,20 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
-from utils import tensify, loss_func_from_target_sigma
+from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
 from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
-def make_functional_fwd_xs(_model):
-    def fn(parameters, xs):
-        return functional_call(_model, parameters, xs)
-    return fn
+
 
 class Laplace():
-    def __init__(self, model, parametersubset=None, dataloader=None, 
+    def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
                  prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
                  n_posterior_samples=1000
                  ):
+
         self.model = model
         self.parametersubset = parametersubset
         self.device = device
@@ -90,14 +88,7 @@ class Laplace():
         self.posterior_samples = self.mean + eps @ self.scale.T 
         return self.posterior_samples
 
-    def vector_to_parameterdict(self, vector):
-        counter = 0
-        parameter_dict = {}
-        for key in self.parametersubset.keys():
-            parameter_dict[key] = vector[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
-            counter += self.parametersubset[key].numel()
-        return parameter_dict
-
+    
     def functional_model_bck(self, parameters, xs):
         counter = 0
         for key in self.parametersubset.keys():
@@ -111,10 +102,11 @@ class Laplace():
 
         if not hasattr(self, "posterior_samples"):
             self.make_posterior_sample(self.n_posterior_samples)
-
+        
+        functional_model = make_functional_fwd_xs(self.model)
+        
         # loop over posterior samples
         for sample_no, posterior_sample in enumerate(self.posterior_samples):
-            functional_model = make_functional_fwd_xs(self.model)
             param_dict = self.vector_to_parameterdict(posterior_sample)
             prediction = functional_model(param_dict, xs)
             if sample_no == 0: 
