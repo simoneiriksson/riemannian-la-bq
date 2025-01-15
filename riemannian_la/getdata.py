@@ -53,8 +53,10 @@ def gen_polynomial_regression_data(weights = torch.tensor([2.0, 1.0]),
 def gen_linear_regression_data(num_train_samples=10, 
                               num_test_samples=10, 
                               target_sigma=1.0, 
-                              batch_size=0, seed=2):
+                              batch_size=0, seed=2, weights=None):
     def fn(x):
+        if weights is not None:
+            return weights[0] + weights[1]*x
         return 2 - 1*x 
     N = num_train_samples + num_test_samples
     with torch_seed(seed):
