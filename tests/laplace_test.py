@@ -42,6 +42,7 @@ model.eval()
 preds = model(xs).softmax(dim=-1).argmax(dim=-1)
 plt.scatter(xs[:,0], xs[:,1], c=ys, s=100, alpha=.5)
 plt.scatter(xs[:,0], xs[:,1], c=preds, s=20)
+plt.show()
 
 accuracy = (preds == ys).sum().item()/len(ys)
 print(f"Accuracy: {accuracy}")
@@ -75,7 +76,7 @@ train_loader, test_loader = gen_linear_regression_data(num_train_samples=10,
                               batch_size=0, seed=2)
 xs, ys = next(iter(train_loader))
 #plt.scatter(xs, ys)
-#plt.show()
+
 
 # create model
 model = LinearModel(num_features=1, num_outputs=1, bias=True)
@@ -129,3 +130,5 @@ mu = S_inverse.inverse() @ (prior_Sigma.inverse() @ prior_mu + target_sigma**-2 
 print(f"Analytical solution:")
 print(f"{mu=}")
 print(f"{S_inverse=}")
+print(f"{precision1=}")
+print(f"{mean1=}")
