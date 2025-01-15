@@ -5,6 +5,7 @@ from utils import tensify, loss_func_from_target_sigma
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
 from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
 class Laplace():
     def __init__(self, model, parametersubset=None, dataloader=None, 
@@ -84,26 +85,30 @@ class Laplace():
         self.posterior_samples = self.mean + eps @ self.scale.T 
         return self.posterior_samples
 
+    def functional_model(self, parameters, xs):
+        counter = 0
+        for key in self.parametersubset.keys():
+            self.parametersubset[key].data = parameters[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
+            counter += self.parametersubset[key].numel()
+        return self.model(xs)
+
+    def make_functional_fwd_xs(_model):
+        def fn(parameters, xs):
+            return functional_call(_model, parameters, xs)
+        return fn
+
     def predictive_posterior_samples(self, xs=None):
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
 
         if not hasattr(self, "posterior_samples"):
             self.make_posterior_sample(self.n_posterior_samples)
-        
+
         parametersubset_bck = {key: value.clone() for key, value in self.parametersubset.items()}
-        
+
         # loop over posterior samples
         for sample_no, posterior_sample in enumerate(self.posterior_samples):
-            #print(f"Making prediction for sample number {sample_no}")
-            counter = 0
-            # update parametersubset with the posterior sample
-            for key in self.parametersubset.keys():
-                self.parametersubset[key].data = posterior_sample[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
-                counter += self.parametersubset[key].numel()
-            # make prediction
-            prediction = self.model(xs)
-            # initiate predictions tensor
+            prediction = self.functional_model(posterior_sample, xs)
             if sample_no == 0: 
                 predictions = torch.zeros((len(self.posterior_samples), *prediction.shape), device=self.device)
             predictions[sample_no] = prediction
@@ -116,7 +121,7 @@ class Laplace():
         return predictions
 
     def forward(self, xs):
-        return self.predictive_posterior(xs).mean(dim=0)
+        return self.predictive_posterior_samples(xs).mean(dim=0)
 
     def __call__(self, xs):
         return self.forward(xs)
