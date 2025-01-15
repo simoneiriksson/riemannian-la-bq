@@ -8,31 +8,13 @@ from models import LinearModel, Model_from_func
 from getdata import gen_log_regression_data
 from train import train
 from laplace_approx import Laplace, vector_to_parameterdict
-from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss
+from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
 
 from matplotlib import pyplot as plt
 import torch
 
-def sum_loss():
-    def fn(preds, targets):
-        return torch.sum(preds)
-    return fn
-
-def neglog_loss():
-    def fn(preds, targets):
-        return -torch.sum(preds.log())
-    return fn
-
-def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys):
-    # Returns a function that takes parameters, data, and target and returns the loss
-    def fn(parameters):
-        param_dict = vector_to_parameterdict(parameters, parametersubset)
-        pred = model_func(param_dict, xs)
-        loss = loss_func(pred, ys)
-        return loss
-    return fn
 
 class discrete_model_sampler:
     def __init__(self, model, loss_fn, xs, ys, limits, n_mesh=100, normalize_weights=True, parametersubset=None):
@@ -112,6 +94,10 @@ def integrator(sampler, model_func, parametersubset, xs):
     integral = (function_values * weights[:, None, None] ).sum(dim=0)
     return integral, function_values, weights, posterior_samples
 
+
+
+
+
 # Let's do discrete integration with the banana function
 from models import functional_banana
 
@@ -127,9 +113,6 @@ weights.sum()
 w = weights
 
 banana_function(posterior_samples[0])
-
-
-
 sampler = discrete_sampler
 
 class tiny_ridiculess_model_class(torch.nn.Module):

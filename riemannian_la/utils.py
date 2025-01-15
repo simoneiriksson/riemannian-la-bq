@@ -61,3 +61,24 @@ def vector_to_parameterdict(vector, parametersubset=None):
         parameter_dict[key] = vector[counter:counter+parametersubset[key].numel()].view(parametersubset[key].shape)
         counter += parametersubset[key].numel()
     return parameter_dict
+
+
+
+def sum_loss():
+    def fn(preds, targets):
+        return torch.sum(preds)
+    return fn
+
+def neglog_loss():
+    def fn(preds, targets):
+        return -torch.sum(preds.log())
+    return fn
+
+def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys):
+    # Returns a function that takes parameters, data, and target and returns the loss
+    def fn(parameters):
+        param_dict = vector_to_parameterdict(parameters, parametersubset)
+        pred = model_func(param_dict, xs)
+        loss = loss_func(pred, ys)
+        return loss
+    return fn
