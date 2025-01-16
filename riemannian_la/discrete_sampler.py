@@ -8,6 +8,8 @@ class discrete_model_sampler:
             self.parametersubset = dict(model.named_parameters())
         else:
             self.parametersubset = parametersubset
+        self.numparams = torch.nn.utils.parameters_to_vector(self.parametersubset.values()).numel()
+
         self.model = model
         self.loss_fn = loss_fn
         self.xs = xs
@@ -20,6 +22,9 @@ class discrete_model_sampler:
         self.span = [abs(l[1] - l[0])  for l in self.limits]
         self.size = torch.tensor(self.span).prod()
         self.dims = len(self.limits)
+        if self.dims != self.numparams:
+            raise ValueError("The number of limits must be equal to the number of parameters to be integrated over")
+        
         self.tile_size = self.size / self.n_mesh**self.dims
         self.normalize_weights = normalize_weights
         self.mesh_vals = [torch.linspace(l[0]+self.span[i]/self.n_mesh, l[1]-self.span[i]/self.n_mesh, self.n_mesh) for i, l in enumerate(self.limits)]
@@ -31,7 +36,7 @@ class discrete_model_sampler:
         samples = meshgrid.view(-1, len(self.limits))
         # weights here should be equal to the likelihood of the data given the parameters
         model_functional = make_functional_fwd_xs(self.model)  # get me the functional version of the model
-        loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, xs, ys)
+        loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, self.xs, self.ys)
         weights = vmap(loss_functional)(samples)* self.tile_size
         if self.normalize_weights:
             weights = weights / (weights.sum())  # Does this make sense at all?
