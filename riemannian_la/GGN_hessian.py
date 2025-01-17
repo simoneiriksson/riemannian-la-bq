@@ -1,6 +1,6 @@
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 import torch
-from utils import tensify
+from utils import tensify, make_functional_fwd_xs
 
 # This function turns a dictionary of gradients into a single vector
 def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):
@@ -17,16 +17,11 @@ def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):
         index += numel
     return grad_vector
 
-def make_functional_fwd(_model):
-    def fn(parameters, xs):
-        return functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0)
-    return fn
-
 def GGN_hessian(model, xs, ys, loss_fn=None, target_sigma=None, parametersubset=None):
     device = xs.device
     if parametersubset is None:
         parametersubset = dict(model.named_parameters())
-    model_func = make_functional_fwd(model)  # create functional forward
+    model_func = make_functional_fwd_xs(model)  # create functional forward
     jac_fn = jacrev(model_func, argnums=0)  # create jacobian function
     mapped_jac_fn = vmap(jac_fn, in_dims=(None, 0))  # vectorize jacobian function
     
