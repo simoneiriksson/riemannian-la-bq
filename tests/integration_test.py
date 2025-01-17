@@ -1,8 +1,11 @@
 import os
 import sys
 # set working directory
+print(f"{__file__ = }")
+print(f"{sys.path = }")
+print("working dir:", os.getcwd())
 os.chdir("../riemannian_la")
-# print(os.getcwd())
+print("working dir:", os.getcwd())
 from models import LinearModel, Model_from_func
 from getdata import gen_log_regression_data
 from train import train
@@ -13,10 +16,16 @@ from integration import integrator
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from matplotlib import pyplot as plt
 from laplace_approx import Laplace
+from MCMC_sampler import MCMC_sampler
 import torch
+from models import functional_banana
+from MCMC_sampler import MCMC_sampler
+import seaborn as sns
+import pandas as pd
 
 """
 A series of usage tests for the integrator function
+Banana model:
 1)  discrete integration over function:
     We want to take the expectation of the output of tiny_ridiculess_model_class (which is equal to x^2 + y^2) over the parameterspace, restricted to some box.
     Here, the paramters folow the posterior distribution given (exactly) by the banana FUNCTION
@@ -28,14 +37,24 @@ A series of usage tests for the integrator function
 3)  laplace integration over model:
     We want to take the expectation of the output of tiny_ridiculess_model_class (which is equal to x^2 + y^2) over the parameterspace, restricted to some box.
     Here, the paramters folow the laplace approximation of the posterior distribution given by the banana MODEL
+
+4)  MCMC-integration over banana model posterior:
+
+Logistic regression model:
+5)  
+
 """
+
+####################################
+# 1) discrete integration over function
+####################################
 #Let's do discrete integration with the banana function
-from models import functional_banana
 n_mesh = 100
+curvature = 0.25
+banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=1.0)
+x = torch.tensor([1.0, 1.0])
 #banana_function = functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0)
 #neg_banana = lambda x: -functional_banana(curvature=0.0, sigma_x=1.0, sigma_y=1.0)(x)
-banana_function = functional_banana(curvature=0.0, sigma_x=2.0, sigma_y=1.0)
-x = torch.tensor([1.0, 1.0])
 print(f"{banana_function(x) = }")
 span = 10
 discrete_sampler = discrete_function_sampler(func=banana_function, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False)
@@ -67,6 +86,31 @@ plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=weights)
 plt.colorbar()
 plt.show()
 plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=function_values)
+plt.show()
+
+
+####################################
+# 2) discrete integration over model
+####################################
+banana_model = Model_from_func(banana_function, input_shape=[2])
+parametersubset = dict(banana_model.named_parameters())
+x = torch.tensor([0.0, 0.0])
+print(f"{banana_function(x) = }")
+torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
+print(f"{banana_model(x) = }")
+
+xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
+ys = banana_function(xs[0]).unsqueeze(0)
+
+discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False)
+posterior_samples, weights = discrete_sampler.samples_and_weights()
+integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
+print(f"When using discrete integration over bnana MODEL we get {integral = }")
+
+
+####################################
+# 3) laplace integration over model
+####################################
 
 # and now the laplace approximation with the banana function
 banana_model = Model_from_func(banana_function, input_shape=[2])
@@ -90,39 +134,52 @@ plt.show()
 plt.scatter(posterior_samples_lp[:,0].detach(), posterior_samples_lp[:,1].detach(), c=function_values_lp.detach())
 plt.show()
 
+#######################################
+# 4) MCMC-integration from banana model
+#######################################
 
-#################
-# Now we do the same, but with model-version
-#################
 
-banana_function = functional_banana(curvature=0.0, sigma_x=2.0, sigma_y=1.0)
+# and now the laplace approximation with the banana function
 banana_model = Model_from_func(banana_function, input_shape=[2])
-parametersubset = dict(banana_model.named_parameters())
-x = torch.tensor([0.0, 0.0])
-print(f"{banana_function(x) = }")
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
-print(f"{banana_model(x) = }")
+const_prior = lambda x: torch.tensor(0.0)
+loss_fn = lambda preds, target: torch.sum(preds.log())
 
-xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
-ys = banana_function(xs[0]).unsqueeze(0)
+parametersubset = dict(banana_model.named_parameters())
+sampler = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
+_=sampler.make_posterior_sample(10000)
 
-span = 10
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False)
-posterior_samples, weights = discrete_sampler.samples_and_weights()
-integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
-print(f"When using discrete integration over bnana MODEL we get {integral = }")
+integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 
+print(f"When using the laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_mcmc = }")
 
+plt.scatter(posterior_samples_mcmc[:,0].detach(), posterior_samples_mcmc[:,1].detach(), c=function_values_mcmc.detach())
+plt.colorbar()
+plt.show()
 
-
-
-
-
-
-
+df = pd.DataFrame(posterior_samples_mcmc.detach().numpy())
+sns.displot(df, x=0, y=1, kind="kde")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################
+# 5) Integrate output from logistic regression model over laplace approximation of posterior  distribution
+#    That is: get mean of predictive posterior distribution
+####################################
 
 # generate data
 num_features = 2
@@ -188,6 +245,9 @@ def functional_loss_from_params(model_func, loss_func, xs, ys):
 model_func = make_functional_fwd_xs(model, torch.nn.functional.log_softmax)
 
 #loss_func = functional_loss_from_params(model_func, torch.nn.CrossEntropyLoss(), xs, ys)
-
+_=sampler.make_posterior_sample(n_samples=1000)
 integral_lp, function_values_lp, weights_lp, posterior_samples_lp = integrator(sampler, model_func, parametersubset, xs)
+
+pred_class = integral_lp.argmax(dim=-1)
+(ys == pred_class).sum().item()/len(ys)
 
