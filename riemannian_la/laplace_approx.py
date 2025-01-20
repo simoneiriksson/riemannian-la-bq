@@ -27,6 +27,13 @@ class Laplace():
         self.prior_logprob = prior_logprob
         self.target_sigma = target_sigma
         self.loss_fn = loss_fn
+        self.xs = xs
+        self.ys = ys
+        if ((dataloader is not None) and (xs is not None)) or ((xs is None) and (dataloader is None)):
+            raise ValueError("Either dataloader or xs must be provided")
+        if xs is not None:
+            self.dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
+        else: self.dataloader = dataloader
 
         assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
 
