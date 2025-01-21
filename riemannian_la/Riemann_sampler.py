@@ -49,7 +49,7 @@ class Riemann_sampler(Laplace):
         theta = state[:self.num_params]
         v = state[self.num_params:]
         f_model = make_functional_fwd_xs(self.model)
-        f_loss = functional_loss_for_vmap(f_model, self.parametersubset, self.loss_fn, self.xs, self.ys)
+        f_loss = functional_loss_for_vmap(f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
         grad_val = grad(f_loss)(theta)
         hess_val = hessian(f_loss)(theta).to(torch.float32)  # For some reason hessian returns double
         acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()

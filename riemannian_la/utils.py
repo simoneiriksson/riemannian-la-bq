@@ -79,11 +79,11 @@ def neglog_loss():
         return -torch.sum(preds.log())
     return fn
 
-def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys):
+def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys, prior_logprob=None):
     # Returns a function that takes parameters, data, and target and returns the loss
     def fn(parameters):
         param_dict = vector_to_parameterdict(parameters, parametersubset)
         pred = model_func(param_dict, xs)
-        loss = loss_func(pred, ys)
+        loss = loss_func(pred, ys) + prior_logprob(parameters) if prior_logprob is not None else loss_func(pred, ys)
         return loss
     return fn
