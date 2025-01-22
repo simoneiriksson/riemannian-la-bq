@@ -13,17 +13,9 @@ from models import functional_banana, Model_from_func
 from matplotlib import pyplot as plt
 from MCMC_sampler import MCMC_sampler
 import torchdiffeq
-import torchode
+import seaborn as sns
+import pandas as pd
 
-def plot_traj(R_sampler):
-    plt.scatter(R_sampler.posterior_samples[:, 0], R_sampler.posterior_samples[:, 1])
-    cmap = plt.get_cmap("gist_rainbow")
-    for i, sample in enumerate(R_sampler.trajectories):
-        color_no = (i*cmap.N)//len(R_sampler.trajectories)
-        plt.plot(sample[0], sample[1], marker="x", c=cmap(color_no))
-        dx = R_sampler.posterior_samples_la[i][0] - R_sampler.mean[0]
-        dy = R_sampler.posterior_samples_la[i][1] - R_sampler.mean[1]
-        plt.arrow(R_sampler.mean[0].detach(), R_sampler.mean[1].detach(), dx.detach(), dy.detach(), head_width=0.1, head_length=0.1, color=cmap(color_no))
 
 
 class Riemann_sampler(Laplace):
@@ -104,51 +96,25 @@ class Riemann_sampler(Laplace):
         return self.make_posterior_sample_torchdiffeq(n_samples)
 
 
-# Now, let us make a model from the banana function, which has the x/y coordinates as input
-# and the banana function value as output
-# With this, we will build a function that takes a parameter vector and an input tensor, and returns the model output tensor
-
-banana_function = functional_banana(curvature=1.0, sigma_x=2.0, sigma_y=1.0)
-banana_model = Model_from_func(banana_function, input_shape=[2])
-torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
-const_prior = lambda params: torch.tensor(0.0)
-loss_fn = neglog_loss()
-
-parametersubset = dict(banana_model.named_parameters())
-
-xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
-ys = banana_function(xs[0]).unsqueeze(0)
-params_init = torch.zeros(2)
-
-R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
-R_sampler.fit(fitting_type="hessian")
-
-_=R_sampler.make_posterior_sample_la(10)
-
-import timeit
-runtime = timeit.timeit(lambda: R_sampler.make_posterior_sample_scipy(), number=10)
-print(f"{runtime = }")
-R_params = R_sampler.make_posterior_sample_scipy()
-plot_traj(R_sampler)
-
-runtime = timeit.timeit(lambda: R_sampler.make_posterior_sample_torchdiffeq(), number=10)
-print(f"{runtime = }")
-R_params_torchdiffeq = R_sampler.make_posterior_sample_torchdiffeq()
-plot_traj(R_sampler)
-
-
-# This also also works!
-n_samples=3
-R_sampler.LA_samples = R_sampler.make_posterior_sample_la(n_samples)
-R_sampler.posterior_samples = torch.zeros((len(R_sampler.LA_samples), R_sampler.num_params))
-R_sampler.trajectories = []
-exp_map_vmap = vmap(R_sampler.expmap_stacked, in_dims=0)
-stacked = torch.column_stack([R_sampler.mean.repeat(n_samples, 1), R_sampler.LA_samples])
-res = exp_map_vmap(stacked)
-
-
-
-logprob = lambda preds, target: torch.sum(preds.log())
-sampler = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=logprob, prior_logprob=const_prior)
-tens_params_hmc = sampler.make_posterior_sample(1000)
-plt.scatter(tens_params_hmc[:, 0], tens_params_hmc[:, 1])
+def riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=".", max_samples=None, LA_arrows=[], kde=True):
+    cmap = plt.get_cmap("gist_rainbow")
+    if plot_traject is True: plot_traject = range(len(R_sampler.trajectories))
+    else: plot_traject=[]
+    if LA_arrows is True: LA_arrows = range(len(R_sampler.trajectories))
+    else: LA_arrows=[]
+    if max_samples is None:
+        max_samples = len(R_sampler.trajectories)
+    if kde:
+        df = pd.DataFrame(R_sampler.posterior_samples[:max_samples].numpy(), columns=["x", "y"])
+        sns.kdeplot(data=df, x="x", y="y", fill=True, levels=10, color="black")
+    if sample_markers is not None:
+        plt.scatter(R_sampler.posterior_samples[:max_samples, 0], R_sampler.posterior_samples[:max_samples, 1], c="black")
+    for i, sample in enumerate(R_sampler.trajectories[:max_samples]):
+        color_no = (i*cmap.N)//len(R_sampler.trajectories[:max_samples])
+        if (i in plot_traject) or (plot_traject is True):
+            plt.plot(sample[0], sample[1], marker=plot_traj_marker, c=cmap(color_no))
+        if (i in LA_arrows) or (LA_arrows is True):
+            dx = R_sampler.posterior_samples_la[i][0] - R_sampler.mean[0]
+            dy = R_sampler.posterior_samples_la[i][1] - R_sampler.mean[1]
+            plt.arrow(R_sampler.mean[0].detach(), R_sampler.mean[1].detach(), dx.detach(), dy.detach(), head_width=0.1, head_length=0.1, color=cmap(color_no))
+    plt.show()
