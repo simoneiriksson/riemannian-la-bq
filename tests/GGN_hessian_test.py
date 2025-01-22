@@ -1,13 +1,17 @@
+import os
+import sys
+# set working directory
+os.chdir("../riemannian_la")
 from models import LinearModel
 from matplotlib import pyplot as plt
-from riemannian_la.getdata import gen_linear_regression_data
+from getdata import gen_linear_regression_data
 import torch
-from riemannian_la.GGN_hessian import GGN_hessian
-from riemannian_la.hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix
-from riemannian_la.utils import tensify
-from riemannian_la.models import Model_from_func, hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
-from riemannian_la.models import functional_banana
-from riemannian_la.utils import NegLogLik_regression
+from GGN_hessian import GGN_hessian
+from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
+from utils import tensify
+from models import Model_from_func
+from models import functional_banana
+from utils import NegLogLik_regression
 
 # Tests of function version of GGN_hessian on a simple linear regression model:
 # define a simple model
@@ -69,7 +73,7 @@ print(f"{hessian_from_func(banana_function, torch.tensor([0.0, 0.0])) =}")
 
 def sum_loss():
     def fn(preds, targets):
-        return torch.sum(preds)
+        return torch.sum(preds, dim=0)
     return fn
 
 banana_model = Model_from_func(banana_function, input_shape=[2])
@@ -81,7 +85,7 @@ print(f"{hess_matrix = }") # should return  tensor([[-0.0199,  0.0000],[ 0.0000,
 
 GGN_matrix2 = GGN_hessian(banana_model, x, y, loss_fn=sum_loss(), target_sigma=target_sigma)
 print(f"{GGN_matrix2=}")
-# This should not work, since the loss is linear, and the GGN uses the hessian of the loss
+# This should return 0-matrix, since the loss is linear, and the GGN uses the hessian of the loss
 
 
 # Now, do the same, with a model that returns the square root of the banana function

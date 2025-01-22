@@ -84,6 +84,6 @@ def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys, pri
     def fn(parameters):
         param_dict = vector_to_parameterdict(parameters, parametersubset)
         pred = model_func(param_dict, xs)
-        loss = loss_func(pred, ys) + prior_logprob(parameters) if prior_logprob is not None else loss_func(pred, ys)
-        return loss
+        loss = loss_func(pred, ys) 
+        return loss + prior_logprob(parameters) if prior_logprob is not None else loss
     return fn

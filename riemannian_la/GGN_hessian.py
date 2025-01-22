@@ -45,10 +45,10 @@ def GGN_hessian(model, xs, ys, loss_fn=None, target_sigma=None, parametersubset=
         hessian_fn = hessian(loss_fn, argnums=0)  # create hessian function
         mapped_hessian_fn = vmap(hessian_fn)  # vectorize hessian function
         loss_hessian_matrix = mapped_hessian_fn(pred, ys)
-        if pred.dim() == 1: # Test if this actually works
-            J_H = torch.einsum('nd, n -> nd', jacobian_matrix, loss_hessian_matrix)
-            J_H_J = torch.einsum('nd, nD -> dD', J_H, jacobian_matrix)
-        elif pred.dim() == 2: # Test if this actually works
+        if loss_hessian_matrix.dim() == 1:
+            J_H = torch.einsum('nkd, n -> nkd', jacobian_matrix, loss_hessian_matrix)
+            J_H_J = torch.einsum('nkd, nkD -> ndD', J_H, jacobian_matrix).sum(dim=0)
+        elif loss_hessian_matrix.dim() == 3: 
             J_H = torch.einsum('nkd, nki -> ndi', jacobian_matrix, loss_hessian_matrix)
             J_H_J = torch.einsum('ndk, nkD -> ndD', J_H, jacobian_matrix).sum(dim=0)
     return J_H_J

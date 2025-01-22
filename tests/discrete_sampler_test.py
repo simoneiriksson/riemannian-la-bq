@@ -55,7 +55,7 @@ xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 
 span = 10
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False)
+discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
 
 plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=weights)

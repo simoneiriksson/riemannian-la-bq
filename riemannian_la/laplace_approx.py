@@ -95,7 +95,7 @@ class Laplace():
         self.posterior_samples = self.mean + eps @ self.scale.T 
         return self.posterior_samples
 
-    
+
     def functional_model_bck(self, parameters, xs):
         counter = 0
         for key in self.parametersubset.keys():
@@ -114,7 +114,7 @@ class Laplace():
         
         # loop over posterior samples
         for sample_no, posterior_sample in enumerate(self.posterior_samples):
-            param_dict = self.vector_to_parameterdict(posterior_sample)
+            param_dict = vector_to_parameterdict(posterior_sample, self.parametersubset)
             prediction = functional_model(param_dict, xs)
             if sample_no == 0: 
                 predictions = torch.zeros((len(self.posterior_samples), *prediction.shape), device=self.device)

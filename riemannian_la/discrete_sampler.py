@@ -38,13 +38,14 @@ class discrete_model_sampler:
 
         assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
         assert (target_sigma is None) or (loss_fn is None), "Can't specify both target_sigma and loss_fn at the same time"
-
+        self.prior_sigma = prior_sigma
+        self.prior_logprob = prior_logprob
         self.loss_fn = loss_func_from_target_sigma(loss_fn, target_sigma)
         if self.prior_sigma is not None:
             if self.prior_sigma == 0:
-                self.prior_logprob = lambda pred, target: torch.tensor(0.0)
+                self.prior_logprob = lambda parameters: torch.tensor(0.0)
             else:
-                self.prior_logprob = lambda pred, target: iid_gaussian_prior(prior_sigma=self.prior_sigma)(pred)
+                self.prior_logprob = lambda parameters: iid_gaussian_prior(prior_sigma=self.prior_sigma)(parameters)
 
         if parametersubset is None:
             self.parametersubset = dict(model.named_parameters())
@@ -58,7 +59,8 @@ class discrete_model_sampler:
         samples = meshgrid.view(-1, len(self.limits))
         # weights here should be equal to the likelihood of the data given the parameters
         model_functional = make_functional_fwd_xs(self.model)  # get me the functional version of the model
-        loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
+        loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, 
+                                                   self.xs, self.ys, prior_logprob=self.prior_logprob)
         weights = vmap(loss_functional)(samples)* self.tile_size
         if self.normalize_weights:
             weights = weights / (weights.sum())  # Does this make sense at all?

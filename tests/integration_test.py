@@ -102,7 +102,7 @@ print(f"{banana_model(x) = }")
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False)
+discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0.0)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
 integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 print(f"When using discrete integration over bnana MODEL we get {integral = }")
@@ -117,7 +117,7 @@ banana_model = Model_from_func(banana_function, input_shape=[2])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
 dict(banana_model.named_parameters())
 
-laplace = Laplace(banana_model, dataloader=None, prior_sigma=0, loss_fn=neglog_loss())
+laplace = Laplace(banana_model, xs=xs, ys=ys, prior_sigma=0, loss_fn=neglog_loss())
 laplace.fit(fitting_type="hessian", xs=xs, ys=ys)
 
 for i in range(1, 6):
