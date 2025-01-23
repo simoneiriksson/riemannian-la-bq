@@ -144,6 +144,12 @@ class Laplace():
             counter += self.parametersubset[key].numel()
         return predictions
 
+    def posterior_logprob(self, parameters):
+        if not self.is_fitted:
+            raise ValueError("Model has not been fitted yet")
+        if not hasattr(self, "scale"):
+            self.fit()
+        return torch.distributions.MultivariateNormal(loc=self.mean, scale_tril=self.scale).log_prob(parameters)
 
 
     def forward(self, xs):
