@@ -69,7 +69,8 @@ def functional_d1_halfcircle(a):
     definite_integral = indef_integral(a) - indef_integral(-a)
 
     def fn(x):
-        return (a**2 - x**2).sqrt() / definite_integral * ((x**2 < a**2) * (x**2 > -a**2)).float()
+        #return (a**2 - x**2).sqrt() / definite_integral * ((x**2 < a**2) * (x**2 > -a**2)).float()
+        return torch.nan_to_num((a**2 - x**2).sqrt() / definite_integral, nan=0.0)
 
     return fn
 
