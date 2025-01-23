@@ -3,7 +3,7 @@ import sys
 # set working directory
 os.chdir("../riemannian_la")
 print(os.getcwd())
-from models import LinearModel
+from models import LinearModel, functional_d1_halfcircle, Model_from_func
 from getdata import gen_log_regression_data, gen_linear_regression_data
 from train import train
 from laplace_approx import Laplace
@@ -132,3 +132,28 @@ print(f"{mu=}")
 print(f"{S_inverse=}")
 print(f"{precision1=}")
 print(f"{mean1=}")
+
+
+
+#################
+# Now for 1d test
+func_1d = functional_d1_halfcircle(a=1.0)
+func_1d_model = Model_from_func(func_1d, input_shape=[1])
+loss_fn = lambda preds, target: -torch.sum(preds.log())
+
+const_prior = lambda params: torch.tensor(1.0)*(params<1.0).all()*(params>-1.0).all()
+
+xs = torch.tensor([0.0]).unsqueeze(0)
+ys = func_1d(xs[0]).unsqueeze(0)
+params_init = torch.zeros(1)
+torch.nn.utils.vector_to_parameters(params_init, func_1d_model.parameters())
+parametersubset = dict(func_1d_model.named_parameters())
+
+sampler = Laplace(func_1d_model, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
+sampler.fit(fitting_type="hessian")
+tens_params_hmc = sampler.make_posterior_sample(100000)
+xs = torch.linspace(-1, 1, 100).unsqueeze(1)
+ys = func_1d(xs)
+
+_=plt.hist(tens_params_hmc.detach(), bins=100, density=True)
+plt.plot(xs, ys)

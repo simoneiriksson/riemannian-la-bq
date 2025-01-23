@@ -4,6 +4,7 @@ import sys
 os.chdir("../riemannian_la")
 # print(os.getcwd())
 from models import LinearModel, Model_from_func
+from models import functional_banana, Model_from_func, functional_d1, functional_d1_2, functional_d1_halfcircle
 from getdata import gen_log_regression_data
 from train import train
 from laplace_approx import Laplace, vector_to_parameterdict
@@ -102,4 +103,22 @@ plt.plot(tens_params_hmc[:, 0], tens_params_hmc[:, 1])
 # This also also works!
 
 
+
+#################
+# Now for 1d test
+func_1d = functional_d1_halfcircle(a=1.0, left_limit=-1.0, right_limit=1.0)
+func_1d_model = Model_from_func(func_1d, input_shape=[1])
+loss_fn = lambda preds, target: torch.sum(preds.log())
+
+const_prior = lambda params: torch.tensor(1.0)*(params<1.0).all()*(params>-1.0).all()
+
+xs = torch.tensor([0.0]).unsqueeze(0)
+ys = func_1d(xs[0]).unsqueeze(0)
+params_init = torch.zeros(1)
+torch.nn.utils.vector_to_parameters(params_init, func_1d_model.parameters())
+parametersubset = dict(func_1d_model.named_parameters())
+
+sampler = MCMC_sampler(func_1d_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
+tens_params_hmc = sampler.make_posterior_sample(1000)
+plt.hist(tens_params_hmc)
 

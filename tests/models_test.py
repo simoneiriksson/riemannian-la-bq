@@ -4,7 +4,7 @@ import sys
 print(os.getcwd())
 os.chdir("../riemannian_la")
 from riemannian_la.hessian import hessian_from_func, hessian_from_model_loss_and_data, hessian_dict_to_matrix
-from riemannian_la.models import functional_banana, Model_from_func
+from riemannian_la.models import functional_banana, Model_from_func, functional_d1, functional_d1_2, functional_d1_halfcircle
 from matplotlib import pyplot as plt
 import torch
 import numpy as np
@@ -67,3 +67,23 @@ print(f"{hess_matrix = }") # should return  tensor([[-0.0199,  0.0000],[ 0.0000,
 # Plot it to see if it looks like a banana
 plot_2d_func(sqrt_root_banana, x_range=[-1, 1], y_range=[-1, 1])
 
+
+
+
+
+#####################
+# Test 1d function
+
+left_limit=-1.0
+right_limit=1.0
+func1d = functional_d1_halfcircle(a=1.0, left_limit=left_limit, right_limit=right_limit)
+xs = torch.linspace(left_limit, right_limit, 100)
+ys = func1d(xs)
+x = torch.tensor([0.0])
+
+# plot it
+plt.plot(xs, ys)
+
+model_1d = Model_from_func(func1d, input_shape=[1])
+torch.nn.utils.vector_to_parameters(x, [model_1d.params])
+hess_dict = hessian_from_model_loss_and_data(model_1d, sum_loss(), x, y)

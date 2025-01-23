@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import torch.nn as nn
+from utils import tensify
 
 def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
     def banana(input_2d):
@@ -20,6 +21,58 @@ def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
         #return torch.log(normalization) + exponent
         return (normalization * torch.exp(exponent)).unsqueeze(0)
     return banana
+
+def functional_d1(a, left_limit, right_limit):
+    a = tensify(a)
+    left_limit = tensify(left_limit)
+    right_limit = tensify(right_limit)
+
+    def indef_integral(x):
+        val = a**(-5/6) * (1/3 * (a**(-1/6)*x).atan() - \
+        1/6 * (3**(1/2) - 2*a**(-1/6)*x).atan() + \
+        1/6 * (3**(1/2) + 2*a**(-1/6)*x).atan() - \
+        1/4 * 3**(-1/2) * (- torch.log(a**(1/3) - 3**(1/2) * a**(1/6)*x + x**2) + torch.log(a**(1/3) + 3**(1/2)*a**(1/6)*x + x**2)))
+        return val
+
+    definite_integral = indef_integral(right_limit) - indef_integral(left_limit)
+
+    def fn(x):
+        return (1/(x**6 +a)) / definite_integral
+
+    return fn
+
+
+def functional_d1_2(a, left_limit, right_limit):
+    a = tensify(a)
+    left_limit = tensify(left_limit)
+    right_limit = tensify(right_limit)
+
+    def indef_integral(x):
+        val = torch.atan(x/a**(1/2))/(a**(1/2))
+        return val
+
+    definite_integral = indef_integral(right_limit) - indef_integral(left_limit)
+
+    def fn(x):
+        return (1/(x**2 +a)) / definite_integral
+
+    return fn
+
+def functional_d1_halfcircle(a):
+    a = tensify(a)
+
+    def indef_integral(x):
+        # 1/2 x sqrt(a^2 - x^2) + 1/2 a^2 tan^(-1)(x/sqrt(a^2 - x^2)) + constant
+        val = 1/2 * x * (a**2 - x**2).sqrt() + 1/2 * a**2 * (x/(a**2 - x**2).sqrt()).atan()
+        return val
+
+    definite_integral = indef_integral(a) - indef_integral(-a)
+
+    def fn(x):
+        return (a**2 - x**2).sqrt() / definite_integral * ((x**2 < a**2) * (x**2 > -a**2)).float()
+
+    return fn
+
 
 # a class that takes a function as an argument and returns a torch model
 class Model_from_func(torch.nn.Module):
