@@ -29,7 +29,7 @@ class discrete_model_sampler:
         
         self.tile_size = self.size / self.n_mesh**self.dims
         self.normalize_weights = normalize_weights
-        self.mesh_vals = [torch.linspace(l[0]+self.span[i]/self.n_mesh, l[1]-self.span[i]/self.n_mesh, self.n_mesh) for i, l in enumerate(self.limits)]
+        self.mesh_vals = [torch.linspace(l[0] + 0.5*self.span[i]/self.n_mesh, l[1] - 0.5*self.span[i]/self.n_mesh, self.n_mesh) for i, l in enumerate(self.limits)]
         if ((dataloader is not None) and (xs is not None)) or ((xs is None) and (dataloader is None)):
             raise ValueError("Either dataloader or xs must be provided")
         if xs is not None:
@@ -79,7 +79,7 @@ class discrete_function_sampler:
         self.dims = len(self.limits)
         self.tile_size = self.size / self.n_mesh**self.dims
         self.normalize_weights = normalize_weights
-        self.mesh_vals = [torch.linspace(l[0]+self.span[i]/self.n_mesh, l[1]-self.span[i]/self.n_mesh, self.n_mesh) for i, l in enumerate(self.limits)]
+        self.mesh_vals = [torch.linspace(l[0] + .5*self.span[i]/self.n_mesh, l[1] - .5*self.span[i]/self.n_mesh, self.n_mesh) for i, l in enumerate(self.limits)]
 
     def samples_and_weights(self):
         # make meshgrid
