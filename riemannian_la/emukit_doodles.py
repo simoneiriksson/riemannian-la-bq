@@ -67,6 +67,13 @@ functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubse
 R_sampler = Riemann_sampler(func_1d_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_logprob=const_prior)
 R_sampler.fit(fitting_type="hessian")
 
+
+#lower_bound = (R_sampler.mean - R_sampler.covariance.diag()*10)
+#upper_bound = (R_sampler.mean + R_sampler.covariance.diag()*10)
+plot = True
+
+#####################
+
 def integrand(v):
     num_ts=10
     res, ts = R_sampler.expmap_torchdiffeq(R_sampler.mean, v, num_ts=num_ts)
@@ -76,24 +83,21 @@ def integrand(v):
 y, theta_init = integrand(torch.tensor(X_init[0]))
 Y_init = y.unsqueeze(0).detach().numpy()
 
-#lower_bound = (R_sampler.mean - R_sampler.covariance.diag()*10)
-#upper_bound = (R_sampler.mean + R_sampler.covariance.diag()*10)
-lower_bound = [-a*5]
-upper_bound = [a*5]
-integral_bounds = [(lower_bound[i], upper_bound[i]) for i in range(len(xs[0]))]
-plot = False
-
-#####################
-
-
 # GPy takes X and Y values at initialization. Those will be overwritten later when the emukit model is initialized.
 gpy_model = GPy.models.GPRegression(X=X_init, Y=Y_init, kernel=GPy.kern.RBF(
                         input_dim=X_init.shape[1], lengthscale=0.5, variance=1.0))
 
+lower_bound = [-a*3]
+upper_bound = [a*3]
+integral_bounds = [(lower_bound[i], upper_bound[i]) for i in range(len(xs[0]))]
 emukit_rbf = RBFGPy(gpy_model.kern)
 emukit_measure = LebesgueMeasure.from_bounds(integral_bounds)
 emukit_qrbf = QuadratureRBFLebesgueMeasure(emukit_rbf, emukit_measure)
 emukit_model = BaseGaussianProcessGPy(kern=emukit_qrbf, gpy_model=gpy_model)
+
+emukit_measure.reasonable_box()
+dir(emukit_measure)
+
 
 emukit_method = VanillaBayesianQuadrature(base_gp=emukit_model, X=X_init, Y=Y_init)
 integral_mean, integral_variance = emukit_method.integrate()
@@ -114,7 +118,7 @@ thetas_plot = meh[:, 1]
 Xs = X_init
 Ys = Y_init
 thetas = theta_init.detach().numpy()
-for i in range(30):
+for i in range(20):
     x_new,_ = optimizer.optimize(ivr_acquisition)
     x_new_t = torch.tensor(x_new).squeeze(0).to(torch.float32)
     #res, ts = R_sampler.expmap_torchdiffeq(R_sampler.mean, x_new_t, num_ts=10)
@@ -188,8 +192,8 @@ def integrand(v):
 
 y, theta_init = integrand(torch.tensor(X_init[0]))
 Y_init = y.unsqueeze(0).detach().numpy()
-lower_bound = [-a*5]
-upper_bound = [a*5]
+lower_bound = [-a*3]
+upper_bound = [a*3]
 
 # GPy takes X and Y values at initialization. Those will be overwritten later when the emukit model is initialized.
 gpy_model = GPy.models.GPRegression(X=X_init, Y=Y_init, kernel=GPy.kern.RBF(
@@ -200,6 +204,10 @@ emukit_measure = FullGaussianMeasure(mean=R_sampler.mean.detach().numpy(), varia
 emukit_qrbf = QuadratureRBFGaussianMeasure(emukit_rbf, emukit_measure)
 emukit_model = BaseGaussianProcessGPy(kern=emukit_qrbf, gpy_model=gpy_model)
 emukit_method = VanillaBayesianQuadrature(base_gp=emukit_model, X=X_init, Y=Y_init)
+
+emukit_measure.reasonable_box()
+emukit_measure.variance
+
 integral_mean, integral_variance = emukit_method.integrate()
 print(f"Integral mean: {integral_mean}, integral std: {np.sqrt(integral_variance)}")
 
@@ -213,6 +221,7 @@ x_plot_int = torch.linspace(lower_bound[0], upper_bound[0], 20).reshape(-1, 1)
 meh = np.array([meh.item() for x in x_plot_int for meh in integrand(x)]).reshape(-1, 2)
 y_plot = meh[:, 0]
 thetas_plot = meh[:, 1]
+
 
 
 Xs = X_init
@@ -234,6 +243,7 @@ for i in range(10):
 
     if plot:
         mu_plot, var_plot = emukit_method.predict(x_plot)
+        measure_plot = emukit_method.measure.compute_density(x_plot)
         LEGEND_SIZE = 15/2
         FIGURE_SIZE = (12/2, 8/2)
         fig, axes = plt.subplots(1,1, figsize=(5,5))
@@ -241,6 +251,8 @@ for i in range(10):
         ax1 = axes
         ax1.plot(Xs, Ys, "ro", markersize=10, label="Observations")
         ax1.plot(x_plot_int, y_plot, "k", label="The Integrand")
+        ax1.plot(x_plot, measure_plot, "g", label="The Measure")
+        ax1.plot(x_plot, measure_plot*mu_plot[:,0], "y", label="The Measure * Model")
         ax1.plot(x_plot, mu_plot, "C0", label="Model")
         ax1.fill_between(x_plot[:, 0],
                         mu_plot[:, 0] + np.sqrt(var_plot)[:, 0],
@@ -257,5 +269,7 @@ for i in range(10):
         ax1.set_ylabel(r"$f(x)$")
         ax1.grid(True)
         ax1.set_xlim(lower_bound[0], upper_bound[0])
-        ax1.set_ylim(-1, 1)
+        max_y = max(measure_plot.max(), mu_plot.max())
+        min_y = min(measure_plot.min(), mu_plot.min())
+        ax1.set_ylim(min_y*1.5, max_y*1.5)
         plt.show()

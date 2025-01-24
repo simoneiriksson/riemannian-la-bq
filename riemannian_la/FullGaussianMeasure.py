@@ -59,39 +59,38 @@ class FullGaussianMeasure(IntegrationMeasure):
 
         self.mean = mean
         self.variance = variance
+        
         self._input_dim = mean.shape[0]
 
     @property
-    def input_dim(self):
-        print("Hello from input_dim")
+    def input_dim(self): # This method is used
         return self._input_dim
 
     @property
     def full_covariance_matrix(self):
-        print("Hello from full_covariance_matrix")
         """The full covariance matrix of the Gaussian measure."""
+        #return None
         return self.variance
 
     @property
     def can_sample(self) -> bool:
-        print("Hello from can_sample")
+        #return None
         return True
 
     def compute_density(self, x: np.ndarray) -> np.ndarray:
-        print("Hello from compute_density")
         dist = scipy.stats.multivariate_normal(mean=self.mean, cov=self.variance)
+        #return None
         return dist.pdf(x)
         # factor = (2 * np.pi) ** (self.input_dim / 2) * np.prod(np.sqrt(self.variance))
         # scaled_diff = (x - self.mean) / (np.sqrt(2 * self.variance))
         # return np.exp(-np.sum(scaled_diff**2, axis=1)) / factor
 
     def compute_density_gradient(self, x: np.ndarray) -> np.ndarray:
-        print("Hello from compute_density_gradient")
         values = self.compute_density(x)
+        #return None
         return values * self.variance @ (x - self.mean) 
 
-    def reasonable_box(self) -> BoundsType:
-        print("Hello from reasonable_box")
+    def reasonable_box(self) -> BoundsType: # This method is used
         # The reasonable box is defined as the hypercube centered at the mean of the Gaussian with 10 standard
         # deviations expanding to either side (edge length of the cube are thus 20 standard deviations).
         # The factor 10 is somewhat arbitrary but well motivated as the Gaussian measure if virtually zero
@@ -102,8 +101,8 @@ class FullGaussianMeasure(IntegrationMeasure):
         return list(zip(lower, upper))
 
     def sample(self, num_samples: int, context_manager: ContextManager = None) -> np.ndarray:
-        print("Hello from sample")
         #samples = self.mean + np.sqrt(self.variance) * np.random.randn(num_samples, self.input_dim)
         samples = np.random.multivariate_normal(self.mean, self.variance, num_samples)
         
+        #return None
         return samples
