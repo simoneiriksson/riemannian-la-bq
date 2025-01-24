@@ -21,7 +21,7 @@ from MCMC_sampler import MCMC_sampler
 import torchdiffeq
 import seaborn as sns
 import pandas as pd
-
+from riemann_sampler import Riemann_sampler, riemann_plotter
 
 # Now, let us make a model from the banana function, which has the x/y coordinates as input
 # and the banana function value as output
@@ -42,11 +42,12 @@ params_init = torch.zeros(2)
 R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
 R_sampler.fit(fitting_type="hessian")
 
-_=R_sampler.make_posterior_sample_la(500)
+_=R_sampler.make_posterior_sample_la(50)
 R_params = R_sampler.make_posterior_sample_scipy()
 
 
-riemann_plotter(R_sampler, sample_markers=None, plot_traject=False, plot_traj_marker=None, max_samples=None, LA_arrows=[])
+ax, fig = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
+plt.show()
 
 # runtime = timeit.timeit(lambda: R_sampler.make_posterior_sample_torchdiffeq(), number=10)
 # print(f"{runtime = }")

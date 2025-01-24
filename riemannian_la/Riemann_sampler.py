@@ -42,6 +42,8 @@ class Riemann_sampler(Laplace):
         v = state[self.num_params:]
         f_model = make_functional_fwd_xs(self.model)
         f_loss = functional_loss_for_vmap(f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
+        #print(f"{theta = }")
+        #print(f"{f_loss(theta) = }")
         grad_val = grad(f_loss)(theta)
         hess_val = hessian(f_loss)(theta).to(torch.float32)  # For some reason hessian returns double
         acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
@@ -61,7 +63,7 @@ class Riemann_sampler(Laplace):
         init = torch.cat([theta, v]).to("cpu").detach()
         ts = torch.linspace(0, 1, num_ts)
         solution = torchdiffeq.odeint(self.ode_fun_torch, init, ts , rtol=self.rtol, atol=self.atol)
-        return solution
+        return solution, ts
 
     def make_posterior_sample_scipy(self, n_samples=None):
         if n_samples is not None:
@@ -84,10 +86,12 @@ class Riemann_sampler(Laplace):
         n_samples = len(self.posterior_samples_la)
         self.posterior_samples = torch.zeros((n_samples, self.num_params))
         self.trajectories = []
+        self.trajectories_ts = []
         for i, la_sample in enumerate(self.posterior_samples_la):
-            res = self.expmap_torchdiffeq(self.mean, la_sample)
+            res, ts = self.expmap_torchdiffeq(self.mean, la_sample)
             riemann_trajectory = res[:,:self.num_params].T
             self.trajectories.append(riemann_trajectory)
+            self.trajectories_ts.append(ts) 
             riemann_sample = res[-1,:self.num_params]
             self.posterior_samples[i] = riemann_sample
         return self.posterior_samples
@@ -97,6 +101,7 @@ class Riemann_sampler(Laplace):
 
 
 def riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=".", max_samples=None, LA_arrows=[], kde=True):
+    fig, ax = plt.subplots()
     cmap = plt.get_cmap("gist_rainbow")
     if plot_traject is True: plot_traject = range(len(R_sampler.trajectories))
     else: plot_traject=[]
@@ -106,15 +111,15 @@ def riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_
         max_samples = len(R_sampler.trajectories)
     if kde:
         df = pd.DataFrame(R_sampler.posterior_samples[:max_samples].numpy(), columns=["x", "y"])
-        sns.kdeplot(data=df, x="x", y="y", fill=True, levels=10, color="black")
+        sns.kdeplot(data=df, x="x", y="y", fill=True, levels=10, color="black", ax=ax)
     if sample_markers is not None:
-        plt.scatter(R_sampler.posterior_samples[:max_samples, 0], R_sampler.posterior_samples[:max_samples, 1], c="black")
+        ax.scatter(R_sampler.posterior_samples[:max_samples, 0], R_sampler.posterior_samples[:max_samples, 1], c="black")
     for i, sample in enumerate(R_sampler.trajectories[:max_samples]):
         color_no = (i*cmap.N)//len(R_sampler.trajectories[:max_samples])
         if (i in plot_traject) or (plot_traject is True):
-            plt.plot(sample[0], sample[1], marker=plot_traj_marker, c=cmap(color_no))
+            ax.plot(sample[0], sample[1], marker=plot_traj_marker, c=cmap(color_no))
         if (i in LA_arrows) or (LA_arrows is True):
             dx = R_sampler.posterior_samples_la[i][0] - R_sampler.mean[0]
             dy = R_sampler.posterior_samples_la[i][1] - R_sampler.mean[1]
-            plt.arrow(R_sampler.mean[0].detach(), R_sampler.mean[1].detach(), dx.detach(), dy.detach(), head_width=0.1, head_length=0.1, color=cmap(color_no))
-    plt.show()
+            ax.arrow(R_sampler.mean[0].detach(), R_sampler.mean[1].detach(), dx.detach(), dy.detach(), head_width=0.1, head_length=0.1, color=cmap(color_no))
+    return fig, ax

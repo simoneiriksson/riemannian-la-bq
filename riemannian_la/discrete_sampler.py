@@ -61,10 +61,10 @@ class discrete_model_sampler:
         model_functional = make_functional_fwd_xs(self.model)  # get me the functional version of the model
         loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, 
                                                    self.xs, self.ys, prior_logprob=self.prior_logprob)
-        weights = vmap(loss_functional)(samples)* self.tile_size
+        weights = vmap(loss_functional)(samples)
         if self.normalize_weights:
             weights = weights / (weights.sum())  # Does this make sense at all?
-        return samples, weights
+        return samples, weights* self.tile_size
 
 class discrete_function_sampler:
     def __init__(self, func, limits, n_mesh=100, normalize_weights=False):

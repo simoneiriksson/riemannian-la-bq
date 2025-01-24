@@ -49,6 +49,14 @@ def make_functional_fwd(_model, xs):
         return functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0)
     return fn
 
+def make_functional_fwd_vector(_model, xs, parametersubset):
+    def fn(parameters):
+        paramdict = vector_to_parameterdict(parameters, parametersubset=parametersubset)
+        return functional_call(_model, paramdict, (xs.unsqueeze(0),)).squeeze(0)
+    return fn
+
+    
+
 def functional_loss(model_func, loss_func):
   # Returns a function that takes parameters, data, and target and returns the loss
   def fn(parameters, xs, ys):

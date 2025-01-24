@@ -35,7 +35,7 @@ loss_fn = lambda preds, target: torch.sum()
 xs = torch.tensor([0.0]).unsqueeze(0)
 ys = func_1d(xs[0]).unsqueeze(0)
 
-const_prior = lambda params: torch.tensor(0.5)*(params<1.0).all()*(params>-1.0).all()
+const_prior = lambda params: (params<=1.0 and params>=-1.0).float() * torch.tensor(.5)
 
 class tiny_ridiculess_model_class(torch.nn.Module):
     def __init__(self, n_params):
@@ -58,10 +58,8 @@ functional_evaluation_model = make_functional_fwd_xs(evaluation_model)  # make f
 #neg_banana = lambda x: -functional_banana(curvature=0.0, sigma_x=1.0, sigma_y=1.0)(x)
 span = a*2
 limits = [[-span, span]]
-discrete_sampler = discrete_function_sampler(func=func_1d, limits=limits, n_mesh=n_mesh, normalize_weights=False)
+discrete_sampler = discrete_function_sampler(func=func_1d, limits=limits, n_mesh=n_mesh, normalize_weights=True)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
-
-func_1d(-2)
 
 torch.nn.utils.vector_to_parameters(torch.tensor([0.1]), evaluation_model.parameters())
 parametersubset = dict(evaluation_model.named_parameters())
@@ -107,17 +105,18 @@ loss_fn = lambda preds, target: torch.sum(preds.log())
 
 parametersubset = dict(func_1d_model.named_parameters())
 sampler = MCMC_sampler(func_1d_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
-_=sampler.make_posterior_sample(10000)
+_=sampler.make_posterior_sample(1000)
 
 integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 
 print(f"When using the MCMC sampling of posterior of func_1d MODEL with {n_samples} we get {integral_mcmc = }")
 
+
+
 ####################################
-# 5) Riemannian laplace integration over model
+# 5) Riemannian laplace integration over model in 1d
 ####################################
 
-# and now the laplace approximation with the banana function
 func_1d_model = Model_from_func(func_1d, input_shape=[1])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0]), func_1d_model.parameters())
 parametersubset = dict(func_1d_model.named_parameters())
@@ -135,5 +134,9 @@ for i in range(1, 10):
     _=R_sampler.make_posterior_sample_la(n_samples)
     R_params = R_sampler.make_posterior_sample()
     integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
-    print(f"When using the Riemannian laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_la = }")
+    print(f"When using the Riemannian laplace approxiation of posterior of func_1d MODEL with {n_samples} we get {integral_la = }")
+
+R_sampler.posterior_samples_la
+R_sampler.posterior_samples
+
 
