@@ -37,8 +37,8 @@ class FullGaussianMeasure(IntegrationMeasure):
 
     """
 
-    def __init__(self, mean: np.ndarray, variance: Union[None, float, np.ndarray], scale = None):
-        super().__init__(domain=None, name="GaussianMeasure")
+    def __init__(self, mean: np.ndarray, variance: Union[None, float, np.ndarray]):
+        super().__init__(domain=None, name="FullGaussianMeasure")
         # check mean
         if not isinstance(mean, np.ndarray):
             raise TypeError("Mean must be of type numpy.ndarray, {} given.".format(type(mean)))
