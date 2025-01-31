@@ -29,6 +29,8 @@ from emukit.core.optimization import GradientAcquisitionOptimizer
 from emukit.core.parameter_space import ParameterSpace
 import numpy as np
 
+from RayAcquisition import RayAcquisition
+
 def reasonable_box_fixed(self_object, factor=4):
     def fn():
         lower = self_object.mean - factor * np.sqrt(self_object.variance)
@@ -73,14 +75,17 @@ class BayesianQuadrature_rays():
         #self.v_init = torch.zeros(self.Rsampler.num_params)
         #self.model_output_init = self.y.unsqueeze(0).detach().numpy()
 
-        self.vs = np.zeros((1,self.Rsampler.num_params))
+        self.v_init = np.zeros((self.Rsampler.num_params))
+        self.y_init, self.theta_init = self.integrand(torch.tensor(self.v_init, dtype=torch.float32))
+        self.y_init, self.theta_init = self.y_init[0,:].detach().numpy(), self.theta_init[0,:].detach().numpy()   
+        print(f"{self.y_init.shape = }, {self.theta_init.shape = }")
 
-        self.y, self.theta_init = self.integrand(torch.tensor(self.vs[0], dtype=torch.float32))
+        self.vs = np.expand_dims(self.v_init, 0)
         self.vs_ray = self.vs
-
-        self.model_output = self.y[0:1,:].detach().numpy()
-        self.thetas = self.theta_init[0:1,:].detach().numpy()
-
+        self.model_output = np.expand_dims(self.y_init, 0)
+        self.thetas = np.expand_dims(self.theta_init, 0)
+        print(f"{self.vs.shape = }, {self.model_output.shape = }")
+        
     # GPy takes X and Y values at initialization. Those will be overwritten later when the emukit model is initialized.
         self.BQ_kernel = kernel=GPy.kern.RBF(
                                     input_dim=self.Rsampler.num_params, 
@@ -110,7 +115,10 @@ class BayesianQuadrature_rays():
 
         self.emukit_model = BaseGaussianProcessGPy(kern=self.emukit_qrbf, gpy_model=self.gpy_model)
         self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs[0:1], Y=self.model_output[0:1])
+        
         self.ivr_acquisition = IntegralVarianceReduction(self.emukit_method)
+        #self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
+
         self.space = ParameterSpace(self.emukit_method.reasonable_box_bounds.convert_to_list_of_continuous_parameters())
         self.optimizer = GradientAcquisitionOptimizer(self.space)
         self.has_plotted = False
@@ -122,7 +130,7 @@ class BayesianQuadrature_rays():
 
         self.ys_new, thetas_new = self.integrand(v_new_t)
         self.thetas = np.append(self.thetas, thetas_new[1:].numpy())
-        vs_ray_new = np.linspace(self.vs[0], v_new[0], self.num_timesteps)
+        vs_ray_new = np.linspace(self.v_init, v_new[0], self.num_timesteps)
 
         print(f"{v_new.shape = }, {self.vs.shape = }") 
         self.vs_ray = np.append(self.vs_ray, vs_ray_new[1:], axis=0)
