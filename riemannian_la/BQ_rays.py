@@ -120,16 +120,16 @@ class BayesianQuadrature_rays():
         v_new_t = torch.tensor(v_new).squeeze(0).to(torch.float32)
         self.vs = np.append(self.vs, v_new, axis=0)
 
-        self.ys_new, thetas = self.integrand(v_new_t)
-        self.thetas = np.append(self.thetas, thetas.numpy())
-
+        self.ys_new, thetas_new = self.integrand(v_new_t)
+        self.thetas = np.append(self.thetas, thetas_new[1:].numpy())
         vs_ray_new = np.linspace(self.vs[0], v_new[0], self.num_timesteps)
+
         print(f"{v_new.shape = }, {self.vs.shape = }") 
+        self.vs_ray = np.append(self.vs_ray, vs_ray_new[1:], axis=0)
+
         print(f"{vs_ray_new.shape = }, {self.vs_ray.shape = }")
 
-        self.vs_ray = np.append(self.vs_ray, vs_ray_new, axis=0)
-
-        self.model_output = np.append(self.model_output, self.ys_new.detach().numpy(), axis=0)
+        self.model_output = np.append(self.model_output, self.ys_new[1:].detach().numpy(), axis=0)
         print(f"{self.model_output.shape = }, {self.vs_ray.shape = }")
         self.emukit_method.set_data(self.vs_ray, self.model_output)
         self.integral_mean, self.integral_variance = self.emukit_method.integrate()
