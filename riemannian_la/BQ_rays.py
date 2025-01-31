@@ -43,7 +43,7 @@ def reasonable_box_fixed(self_object, factor=4):
 
 class BayesianQuadrature_rays():
     def __init__(self, Rsampler: Riemann_sampler, evaluation_model, measure="gaussian_rescaled", 
-                 integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10
+                 integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True
                  ):
         self.Rsampler = Rsampler
         self.evaluation_model = evaluation_model
@@ -78,13 +78,11 @@ class BayesianQuadrature_rays():
         self.v_init = np.zeros((self.Rsampler.num_params))
         self.y_init, self.theta_init = self.integrand(torch.tensor(self.v_init, dtype=torch.float32))
         self.y_init, self.theta_init = self.y_init[0,:].detach().numpy(), self.theta_init[0,:].detach().numpy()   
-        print(f"{self.y_init.shape = }, {self.theta_init.shape = }")
-
+        
         self.vs = np.expand_dims(self.v_init, 0)
         self.vs_ray = self.vs
         self.model_output = np.expand_dims(self.y_init, 0)
         self.thetas = np.expand_dims(self.theta_init, 0)
-        print(f"{self.vs.shape = }, {self.model_output.shape = }")
         
     # GPy takes X and Y values at initialization. Those will be overwritten later when the emukit model is initialized.
         self.BQ_kernel = kernel=GPy.kern.RBF(
@@ -115,16 +113,18 @@ class BayesianQuadrature_rays():
 
         self.emukit_model = BaseGaussianProcessGPy(kern=self.emukit_qrbf, gpy_model=self.gpy_model)
         self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs[0:1], Y=self.model_output[0:1])
-        
-        self.ivr_acquisition = IntegralVarianceReduction(self.emukit_method)
-        #self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
+        if use_ray_acqusition:
+            self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
+        else:
+            self.ivr_acquisition = IntegralVarianceReduction(self.emukit_method)
 
         self.space = ParameterSpace(self.emukit_method.reasonable_box_bounds.convert_to_list_of_continuous_parameters())
         self.optimizer = GradientAcquisitionOptimizer(self.space)
         self.has_plotted = False
 
     def step(self):
-        v_new,_ = self.optimizer.optimize(self.ivr_acquisition)
+        v_new,acq_val = self.optimizer.optimize(self.ivr_acquisition)
+        print(f"{(v_new**2).sum() = }, {acq_val = }")
         v_new_t = torch.tensor(v_new).squeeze(0).to(torch.float32)
         self.vs = np.append(self.vs, v_new, axis=0)
 
@@ -132,13 +132,10 @@ class BayesianQuadrature_rays():
         self.thetas = np.append(self.thetas, thetas_new[1:].numpy())
         vs_ray_new = np.linspace(self.v_init, v_new[0], self.num_timesteps)
 
-        print(f"{v_new.shape = }, {self.vs.shape = }") 
         self.vs_ray = np.append(self.vs_ray, vs_ray_new[1:], axis=0)
 
-        print(f"{vs_ray_new.shape = }, {self.vs_ray.shape = }")
-
+        
         self.model_output = np.append(self.model_output, self.ys_new[1:].detach().numpy(), axis=0)
-        print(f"{self.model_output.shape = }, {self.vs_ray.shape = }")
         self.emukit_method.set_data(self.vs_ray, self.model_output)
         self.integral_mean, self.integral_variance = self.emukit_method.integrate()
         return self.integral_mean, self.integral_variance
@@ -172,11 +169,8 @@ class BayesianQuadrature_rays():
         res, ts = R_sampler.expmap_torchdiffeq(R_sampler.mean, v, num_ts=num_ts)
         #theta = res[-1,:R_sampler.num_params].T
         thetas = res[:,:R_sampler.num_params]
-        print(f"{thetas.shape = }")
-        print(f"{self.functional_fwd(thetas[0]).shape = }")
         #z_dist = torch.distributions.MultivariateNormal(torch.zeros_like(R_sampler.mean), torch.eye(R_sampler.covariance.shape[0]))
         ys = torch.stack([self.functional_fwd(theta) for theta in thetas])
-        print(f"{ys.shape = }")
         return ys, thetas
 
 
@@ -261,20 +255,17 @@ R_sampler.fit(fitting_type="hessian")
 
 evaluation_model = tiny_ridiculess_model_class(n_params=2)
 
-#BQ = BayesianQuadrature(R_sampler, evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10)
-
-BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10)
-BQ.model_output.shape
-BQ.vs_ray.shape
-
-for i in range(10):
+BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=5, use_ray_acqusition=False)
+fig, axes = BQ.plot2d()
+plt.show()
+for i in range(8):
     integral_mean, integral_variance = BQ.step()
     print(f"{i = }, {integral_mean = }, {integral_variance = }")
-
     fig, axes = BQ.plot2d()
     plt.show()
 
-
+BQ.vs
 
 def loop(measure, num_steps=10):
     BQ = BayesianQuadrature(R_sampler, evaluation_model, measure=measure, integral_bounds_std=4, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10)
