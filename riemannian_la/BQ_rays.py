@@ -51,7 +51,7 @@ class BayesianQuadrature_rays():
         self.integral_bounds_std = integral_bounds_std
         self.GP_lengthscale = GP_lengthscale
         self.GP_variance = GP_variance
-
+        
         self.functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubset=parametersubset)
 
         self.num_timesteps = num_timesteps
@@ -199,6 +199,16 @@ class BayesianQuadrature_rays():
                 self.xs_plt = np.linspace(-self.limits[0], self.limits[0], N)
                 self.ys_plt = np.linspace(-self.limits[1], self.limits[1], N)
                 self.xys_plt = np.array([[x, y] for x in self.xs_plt for y in self.ys_plt])
+
+                self.function_vals = torch.stack([self.functional_fwd(obs + self.Rsampler.mean) for obs in torch.tensor(self.xys_plt)]).reshape(N, N).T
+                
+                f_model = make_functional_fwd_vector(self.Rsampler.model, xs, parametersubset=dict(self.Rsampler.model.named_parameters()))
+                self.f_loss = functional_loss_for_vmap(f_model, self.Rsampler.parametersubset, self.Rsampler.loss_fn, self.Rsampler.xs, self.Rsampler.ys, prior_logprob=self.Rsampler.prior_logprob)
+                
+                self.plt_model_loss = torch.stack([f_model(obs + self.Rsampler.mean) for obs in torch.tensor(self.xys_plt)]).reshape(N, N).T
+                self.function_times_loss = self.function_vals * self.plt_model_loss
+                
+
             fig, axes = plt.subplots(2,4, figsize=(20,10))
 
             mu_plot, var_plot = self.emukit_method.predict(self.xys_plt)
@@ -237,10 +247,19 @@ class BayesianQuadrature_rays():
             #axes[3].scatter(xys_plt[:,0], xys_plt[:,1], c=np.sqrt(var_plot), cmap="viridis")
             axes[1][3].set_title("Acquisition function")
 
+            # Plot the true function value in the original space with the traces on top.
 
+            #axes[0][2].scatter(self.thetas[:,0], self.thetas[:,1], c=self.model_output, cmap="viridis")
+            #axes[0][2].set_xlim(-self.limits[0], self.limits[0])
+            #axes[0][2].set_ylim(-self.limits[1], self.limits[1])
+            axes[0][2].contourf(self.xs_plt, self.ys_plt, self.function_times_loss.detach(), cmap="viridis")
+            axes[0][2].scatter(BQ.thetas[:,0] - BQ.Rsampler.mean[0].detach().numpy(), BQ.thetas[:,1] - BQ.Rsampler.mean[1].detach().numpy(), c="k", marker="x")
+            axes[0][2].set_title("True function times model loss")
 
-
-
+            axes[0][3].contourf(self.xs_plt, self.ys_plt, self.plt_model_loss.detach(), cmap="viridis")
+            axes[0][3].scatter(BQ.thetas[:,0] - BQ.Rsampler.mean[0].detach().numpy(), BQ.thetas[:,1] - BQ.Rsampler.mean[1].detach().numpy(), c="k", marker="x")
+            #axes[0][3].contour(self.xs_plt, self.ys_plt, self.function_vals.detach(), c="k")
+            axes[0][3].set_title("Model loss")
             self.has_plotted = True
             return fig, axes
 
@@ -287,12 +306,21 @@ evaluation_model = tiny_ridiculess_model_class(n_params=2)
 torch.manual_seed(0)
 BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="lebesgue", integral_bounds_std=4, 
                              GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True)
-for i in range(100):
+
+for i in range(10):
     integral_mean, integral_variance = BQ.step()
     print(f"{i = }, {integral_mean = }, {integral_variance = }")
-    if i%1 ==0:
-        fig, axes = BQ.plot2d()
-        plt.show()
+    fig, axes = BQ.plot2d()
+    plt.show()
+
+plt.scatter(BQ.thetas[:,0], BQ.thetas[:,1], c=BQ.model_output, cmap="viridis")
+
+function_vals = torch.stack([BQ.functional_fwd(obs) for obs in torch.tensor(BQ.xys_plt)]).reshape(100, 100).T
+f_model = make_functional_fwd_vector(BQ.Rsampler.model, xs, parametersubset=parametersubset)
+model_output = torch.stack([f_model(torch.tensor(obs)) for obs in BQ.xys_plt]).reshape(100, 100).T
+function_times_measure = function_vals * model_output
+plt.contourf(BQ.xs_plt, BQ.ys_plt, function_times_measure, cmap="viridis")
+
 
 
 def loop(measure, num_steps=10):
