@@ -56,8 +56,12 @@ class Laplace():
         if self.subspace_rank is None:
             self.fit = self.fit_full
             self.subspace_rank = self.num_params
+            self.is_subspacelaplace = False
+
         else:
             self.fit = self.fit_subspace
+            self.is_subspacelaplace = True
+
 
     def fit_full(self, fitting_type="hessian", xs=None, ys=None):
         _=self.model.eval()
@@ -96,17 +100,17 @@ class Laplace():
     def fit_subspace(self, fitting_type="hessian", xs=None, ys=None):
         _, _ = self.fit_full(fitting_type=fitting_type, xs=xs, ys=ys)
         U, S, V = self.covariance.svd()
+        self.svd_S = S
+        self.svd_U = U
         self.full_scale = self.scale
-        subspace = V[:, :self.subspace_rank]
-        self.subspace_scale = subspace @ S[:self.subspace_rank].sqrt().diag()
+        self.norm_scale = V[:, :self.subspace_rank]
+        self.subspace_scale = self.norm_scale @ S[:self.subspace_rank].sqrt().diag()
         self.scale = self.subspace_scale
         self.full_covariance = self.covariance
         self.covariance = self.scale @ self.scale.T
         self.full_precision = self.precision
-        self.precision = self.covariance.inverse()
-        self.is_fitted = True
-        
-        return self.mean, self.precision
+        self.precision = None
+        return self.mean, self.full_precision
 
     def make_posterior_sample(self, n_samples=None):
         if n_samples is None:
