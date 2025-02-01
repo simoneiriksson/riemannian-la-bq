@@ -21,10 +21,10 @@ import pandas as pd
 class Riemann_sampler(Laplace):
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
                  prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
-                 n_posterior_samples=1000, rtol=1e-6, atol=1e-6
+                 n_posterior_samples=1000, rtol=1e-6, atol=1e-6, subspace_rank=None
                  ):
 
-        super().__init__(model, parametersubset, dataloader, xs, ys, prior_sigma, prior_logprob, target_sigma, loss_fn, device, verbose, n_posterior_samples)
+        super().__init__(model, parametersubset, dataloader, xs, ys, prior_sigma, prior_logprob, target_sigma, loss_fn, device, verbose, n_posterior_samples, subspace_rank)
         # self.make_posterior_sample_la = super().make_posterior_sample
         self.rtol = rtol
         self.atol = atol
