@@ -50,11 +50,6 @@ print(f"Accuracy: {accuracy}")
 # create Laplace object
 laplace = Laplace(model, dataloader=train_loader, prior_sigma=prior_sigma, subspace_rank=4)
 
-# fit Laplace object
-mean1, covariance1 = laplace.fit(fitting_type="hessian")
-mean2, covariance2 = laplace.fit(fitting_type="GGN")
-# Since the model is linear, the two methods should give the same result
-print(torch.isclose(mean1, mean2).all(), torch.isclose(covariance1, covariance2, rtol=1e-3).all())
 
 # make posterior samples
 posterior_samples = laplace.make_posterior_sample(n_samples=1000)

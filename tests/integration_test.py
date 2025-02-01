@@ -46,8 +46,8 @@ Logistic regression model:
 
 """
 
-n_mesh = 1000
-curvature = 0.0
+n_mesh = 100
+curvature = 0.1
 banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=1.0)
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
@@ -223,6 +223,13 @@ for i in range(5, 8):
     ax, fig = riemann_plotter(R_sampler, sample_markers=".", plot_traject=False, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
     plt.show()
 
+
+
+n_samples = 2**10
+_=R_sampler.make_posterior_sample_la(n_samples)
+R_params = R_sampler.make_posterior_sample()
+integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
+print(f"When using the Riemannian laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_la = }")
 
 
 

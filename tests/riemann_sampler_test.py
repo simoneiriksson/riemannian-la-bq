@@ -55,3 +55,26 @@ plt.show()
 # plot_traj(R_sampler)
 
 
+
+# lets try the subsapce version
+banana_function = functional_banana(curvature=1.0, sigma_x=2.0, sigma_y=1.0)
+banana_model = Model_from_func(banana_function, input_shape=[2])
+torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
+const_prior = lambda params: torch.tensor(0.0)
+loss_fn = neglog_loss()
+
+parametersubset = dict(banana_model.named_parameters())
+
+xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
+ys = banana_function(xs[0]).unsqueeze(0)
+params_init = torch.zeros(2)
+
+R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior, subspace_rank=1)
+R_sampler.fit(fitting_type="hessian")
+
+_=R_sampler.make_posterior_sample_la(50)
+R_params = R_sampler.make_posterior_sample_scipy()
+
+
+ax, fig = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
+plt.show()

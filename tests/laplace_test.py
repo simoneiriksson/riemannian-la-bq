@@ -99,6 +99,11 @@ laplace = Laplace(model, dataloader=train_loader, prior_sigma=prior_sigma, targe
 mean1, precision1 = laplace.fit(fitting_type="hessian")
 mean2, precision2 = laplace.fit(fitting_type="GGN")
 
+print(f"{laplace.mean = }")
+print(f"{laplace.precision = }")
+print(f"{laplace.scale = }")
+print(f"{laplace.covariance = }")
+
 # Since the model is linear, the two methods should give the same result
 print(torch.isclose(mean1, mean2).all(), torch.isclose(precision1, precision2).all())
 
