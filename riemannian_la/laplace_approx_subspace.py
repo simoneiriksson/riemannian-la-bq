@@ -9,7 +9,7 @@ from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional
 
 
 
-class Laplace():
+class Laplace_subspace():
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
                  prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
                  n_posterior_samples=1000, subspace_rank=None
