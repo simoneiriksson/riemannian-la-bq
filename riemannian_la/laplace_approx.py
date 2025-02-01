@@ -95,14 +95,6 @@ class Laplace():
         self.posterior_samples = self.mean + eps @ self.scale.T 
         return self.posterior_samples
 
-
-    def functional_model_bck(self, parameters, xs):
-        counter = 0
-        for key in self.parametersubset.keys():
-            self.parametersubset[key].data = parameters[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
-            counter += self.parametersubset[key].numel()
-        return self.model(xs)
-
     def predictive_posterior_samples(self, xs=None):
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
@@ -120,6 +112,23 @@ class Laplace():
                 predictions = torch.zeros((len(self.posterior_samples), *prediction.shape), device=self.device)
             predictions[sample_no] = prediction
         return predictions
+
+    def posterior_logprob(self, parameters):
+        if not self.is_fitted:
+            raise ValueError("Model has not been fitted yet")
+        if not hasattr(self, "scale"):
+            self.fit()
+        return torch.distributions.MultivariateNormal(loc=self.mean, scale_tril=self.scale).log_prob(parameters)
+
+
+
+
+    def functional_model_bck(self, parameters, xs):
+        counter = 0
+        for key in self.parametersubset.keys():
+            self.parametersubset[key].data = parameters[counter:counter+self.parametersubset[key].numel()].view(self.parametersubset[key].shape)
+            counter += self.parametersubset[key].numel()
+        return self.model(xs)
 
     def predictive_posterior_samples_bck(self, xs=None):
         if not self.is_fitted:
@@ -143,14 +152,6 @@ class Laplace():
             self.parametersubset[key].data = parametersubset_bck[key]
             counter += self.parametersubset[key].numel()
         return predictions
-
-    def posterior_logprob(self, parameters):
-        if not self.is_fitted:
-            raise ValueError("Model has not been fitted yet")
-        if not hasattr(self, "scale"):
-            self.fit()
-        return torch.distributions.MultivariateNormal(loc=self.mean, scale_tril=self.scale).log_prob(parameters)
-
 
     def forward(self, xs):
         return self.predictive_posterior_samples(xs).mean(dim=0)
