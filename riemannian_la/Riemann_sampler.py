@@ -28,6 +28,8 @@ class Riemann_sampler(Laplace):
         # self.make_posterior_sample_la = super().make_posterior_sample
         self.rtol = rtol
         self.atol = atol
+        self.f_model = make_functional_fwd_xs(self.model)
+        self.f_loss = functional_loss_for_vmap(self.f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
 
     def make_posterior_sample_la(self, n_samples=None):
         self.posterior_samples_la = super().make_posterior_sample(n_samples)
@@ -40,12 +42,10 @@ class Riemann_sampler(Laplace):
     def ode_fun_torch(self, t, state):
         theta = state[:self.num_params]
         v = state[self.num_params:]
-        f_model = make_functional_fwd_xs(self.model)
-        f_loss = functional_loss_for_vmap(f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
         #print(f"{theta = }")
         #print(f"{f_loss(theta) = }")
-        grad_val = grad(f_loss)(theta)
-        hess_val = hessian(f_loss)(theta).to(torch.float32)  # For some reason hessian returns double
+        grad_val = grad(self.f_loss)(theta)
+        hess_val = hessian(self.f_loss)(theta).to(torch.float32)  # For some reason hessian returns double
         acc = -(grad_val * (1 / (1 + grad_val.norm()**2)) * (v.T @ hess_val @ v)).flatten()
         return torch.cat([v, acc])
 
