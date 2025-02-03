@@ -58,6 +58,14 @@ def functional_d1_2(a, left_limit, right_limit):
 
     return fn
 
+
+def functional_d1_lognorm(mu, sigma):
+    mu = tensify(mu)
+    sigma = tensify(sigma)
+    def fn(x):
+        return torch.exp(-1/2 * ((torch.log(x) - mu)/sigma)**2) / (x * sigma * torch.tensor(2 * torch.pi).sqrt())
+    return fn
+
 def functional_d1_halfcircle(a):
     a = tensify(a)
 
@@ -72,6 +80,29 @@ def functional_d1_halfcircle(a):
         #return (a**2 - x**2).sqrt() / definite_integral * ((x**2 < a**2) * (x**2 > -a**2)).float()
         return torch.nan_to_num((a**2 - x**2).sqrt() / definite_integral, nan=0.0)
 
+    return fn
+
+
+
+def functional_d1_fourth_degree_poly():
+    def indef_integral(x):
+        val = 1/105 * (x**7 + 7*x**5 + 14*x**3 + 7*x)
+        return val
+    
+    definite_integral = indef_integral(1) - indef_integral(-1)
+
+    def fn(x):
+        # define a foruth degree polynomial that is zero at -1, 1, and integrates to 1 over [-1, 1]
+        y = (1 - x**2)**2 / definite_integral
+        return y * (x**2 < 1) * (x**2 > -1)
+
+    return fn
+
+def functional_d1_normal(mu, sigma):
+    mu = tensify(mu)
+    sigma = tensify(sigma)
+    def fn(x):
+        return torch.exp(-1/2 * ((x - mu)/sigma)**2) / (sigma * torch.tensor(2 * torch.pi).sqrt())
     return fn
 
 
