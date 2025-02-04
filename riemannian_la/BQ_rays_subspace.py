@@ -44,7 +44,7 @@ def reasonable_box_fixed(self_object, factor=4):
 class BayesianQuadrature_rays():
     def __init__(self, Rsampler: Riemann_sampler, evaluation_model, measure="gaussian_rescaled", 
                  integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True,
-                 square_plots=True, theta_space_plot_limits=None):
+                 square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None):
         self.Rsampler = Rsampler
         self.evaluation_model = evaluation_model
         self.measure = measure
