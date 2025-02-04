@@ -4,7 +4,7 @@ from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from laplace_approx import Laplace
 from scipy.integrate import solve_ivp
@@ -20,17 +20,18 @@ import pandas as pd
 
 class Riemann_sampler(Laplace):
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
-                 prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
+                 prior_sigma=None, prior_loss=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
                  n_posterior_samples=1000, rtol=1e-6, atol=1e-6, subspace_rank=None
                  ):
 
-        super().__init__(model, parametersubset, dataloader, xs, ys, prior_sigma, prior_logprob, target_sigma, loss_fn, device, verbose, n_posterior_samples, subspace_rank)
+        super().__init__(model, parametersubset, dataloader, xs, ys, prior_sigma, prior_loss, target_sigma, loss_fn, device, verbose, n_posterior_samples, subspace_rank)
         # self.make_posterior_sample_la = super().make_posterior_sample
         self.rtol = rtol
         self.atol = atol
         self.f_model = make_functional_fwd_xs(self.model)
-        self.f_loss = functional_loss_for_vmap(self.f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_logprob=self.prior_logprob)
-
+        self.f_loss = functional_loss_for_vmap(self.f_model, self.parametersubset, self.loss_fn, self.xs, self.ys, prior_loss=self.prior_loss)
+        self.f_likelihood = lambda params: (-self.f_loss(params)).exp()
+        
     def make_posterior_sample_la(self, n_samples=None):
         self.posterior_samples_la = super().make_posterior_sample(n_samples)
         #print(f"{self.posterior_samples_la = }")
@@ -88,7 +89,7 @@ class Riemann_sampler(Laplace):
         self.trajectories = []
         self.trajectories_ts = []
         for i, la_sample in enumerate(self.posterior_samples_la):
-            res, ts = self.expmap_torchdiffeq(self.mean, la_sample)
+            res, ts = self.expmap_torchdiffeq(self.mean, la_sample - self.mean)
             riemann_trajectory = res[:,:self.num_params].T
             self.trajectories.append(riemann_trajectory)
             self.trajectories_ts.append(ts) 

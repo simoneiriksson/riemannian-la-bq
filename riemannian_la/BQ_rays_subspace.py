@@ -4,7 +4,7 @@ from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict, make_functional_fwd
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from laplace_approx import Laplace
 from scipy.integrate import solve_ivp
@@ -42,7 +42,7 @@ def reasonable_box_fixed(self_object, factor=4):
 
 
 class BayesianQuadrature_rays():
-    def __init__(self, Rsampler: Riemann_sampler, evaluation_model, measure="gaussian_rescaled", 
+    def __init__(self, Rsampler: Riemann_sampler, evaluation_model=None, measure="gaussian_rescaled", 
                  integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True,
                  square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None):
         self.Rsampler = Rsampler
@@ -52,8 +52,13 @@ class BayesianQuadrature_rays():
         self.GP_lengthscale = GP_lengthscale
         self.GP_variance = GP_variance
         self.theta_space_plot_limits = theta_space_plot_limits
+        if parametersubset is None:
+            self.parametersubset = dict(evaluation_model.named_parameters())
+        else:
+            self.parametersubset = parametersubset
 
-        self.functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubset=parametersubset)
+
+        self.functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubset=self.parametersubset)
 
         self.num_timesteps = num_timesteps
         self.square_plots = square_plots
@@ -92,7 +97,7 @@ class BayesianQuadrature_rays():
                                     input_dim=self.sampling_dims, 
                                     lengthscale=self.GP_lengthscale,
                                     variance=self.GP_variance)
-        #print(f"{self.vs.shape = }, {self.model_output.shape = }")
+        print(f"{self.vs.shape = }, {self.integrand_values.shape = }")
         self.gpy_model = GPy.models.GPRegression(X=self.vs[0:1], 
                                                  Y=self.integrand_values[0:1], 
                                                  kernel=self.BQ_kernel)

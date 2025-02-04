@@ -4,7 +4,7 @@ from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict, make_functional_fwd
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from laplace_approx import Laplace
 from scipy.integrate import solve_ivp
@@ -203,7 +203,7 @@ class BayesianQuadrature_rays():
                 self.function_vals = torch.stack([self.functional_fwd(obs + self.Rsampler.mean) for obs in torch.tensor(self.xys_plt)]).reshape(N, N).T
                 
                 f_model = make_functional_fwd_vector(self.Rsampler.model, xs, parametersubset=dict(self.Rsampler.model.named_parameters()))
-                self.f_loss = functional_loss_for_vmap(f_model, self.Rsampler.parametersubset, self.Rsampler.loss_fn, self.Rsampler.xs, self.Rsampler.ys, prior_logprob=self.Rsampler.prior_logprob)
+                self.f_loss = functional_loss_for_vmap(f_model, self.Rsampler.parametersubset, self.Rsampler.loss_fn, self.Rsampler.xs, self.Rsampler.ys, prior_logprob=self.Rsampler.prior_loss)
                 
                 self.plt_model_loss = torch.stack([f_model(obs + self.Rsampler.mean) for obs in torch.tensor(self.xys_plt)]).reshape(N, N).T
                 self.function_times_loss = self.function_vals * self.plt_model_loss

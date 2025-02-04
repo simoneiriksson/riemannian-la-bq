@@ -3,25 +3,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data import Subset
 from torch.distributions import Categorical, MultivariateNormal
 from matplotlib import pyplot as plt
+from utils import torch_seed
 
-from contextlib import contextmanager
-
-@contextmanager
-def torch_seed(seed):
-    """
-    A context manager to temporarily set the random seed in PyTorch.
-    
-    Args:
-        seed (int): The seed value to use within the context.
-    """
-    # Save the current random state
-    random_state = torch.get_rng_state()
-    try:
-        torch.manual_seed(seed)
-        yield
-    finally:
-        # Restore the previous random state
-        torch.set_rng_state(random_state)
 
 def make_loaders(X, y, train_size, batch_size=0):
     X_train, X_test = X[:train_size], X[train_size:]

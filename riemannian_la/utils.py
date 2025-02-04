@@ -1,5 +1,6 @@
 import torch
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
+from contextlib import contextmanager
 
 def tensify(variable):
     if isinstance(variable, torch.Tensor):
@@ -10,7 +11,7 @@ def tensify(variable):
         return torch.tensor(variable, dtype=torch.float32)
 
 
-def iid_gaussian_prior(prior_sigma=1.0):
+def iid_gaussian_prior_loss(prior_sigma=1.0):
     if prior_sigma == 0:  # if prior_sigma is zero, return a function that returns zero - that is: no regularization
         def fn(parameters):
             return torch.tensor(0.0)
@@ -87,11 +88,30 @@ def neglog_loss():
         return -torch.sum(preds.log())
     return fn
 
-def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys, prior_logprob=None):
+def functional_loss_for_vmap(model_func, parametersubset, loss_func, xs, ys, prior_loss=None):
     # Returns a function that takes parameters, data, and target and returns the loss
     def fn(parameters):
         param_dict = vector_to_parameterdict(parameters, parametersubset)
         pred = model_func(param_dict, xs)
         loss = loss_func(pred, ys) 
-        return loss + prior_logprob(parameters) if prior_logprob is not None else loss
+        return loss + prior_loss(parameters) if prior_loss is not None else loss
     return fn
+
+
+
+@contextmanager
+def torch_seed(seed):
+    """
+    A context manager to temporarily set the random seed in PyTorch.
+    
+    Args:
+        seed (int): The seed value to use within the context.
+    """
+    # Save the current random state
+    random_state = torch.get_rng_state()
+    try:
+        torch.manual_seed(seed)
+        yield
+    finally:
+        # Restore the previous random state
+        torch.set_rng_state(random_state)

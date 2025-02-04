@@ -1,11 +1,11 @@
 import torch
-from utils import functional_loss_for_vmap, make_functional_fwd_xs, loss_func_from_target_sigma, iid_gaussian_prior
+from utils import functional_loss_for_vmap, make_functional_fwd_xs, loss_func_from_target_sigma, iid_gaussian_prior_loss
 from torch.func import vmap
 from torch.utils.data import DataLoader, TensorDataset
 
 class discrete_model_sampler:
     def __init__(self, model=None, dataloader=None, xs=None, ys=None, limits=None, n_mesh=100, normalize_weights=True, parametersubset=None, 
-                 prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None):
+                 prior_sigma=None, prior_loss=None, target_sigma=None, loss_fn=None):
         if parametersubset is None:
             self.parametersubset = dict(model.named_parameters())
         else:
@@ -36,16 +36,16 @@ class discrete_model_sampler:
             self.dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
         else: self.dataloader = dataloader
 
-        assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
+        assert (prior_loss is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
         assert (target_sigma is None) or (loss_fn is None), "Can't specify both target_sigma and loss_fn at the same time"
         self.prior_sigma = prior_sigma
-        self.prior_logprob = prior_logprob
+        self.prior_loss = prior_loss
         self.loss_fn = loss_func_from_target_sigma(loss_fn, target_sigma)
         if self.prior_sigma is not None:
             if self.prior_sigma == 0:
-                self.prior_logprob = lambda parameters: torch.tensor(0.0)
+                self.prior_loss = lambda parameters: torch.tensor(0.0)
             else:
-                self.prior_logprob = lambda parameters: iid_gaussian_prior(prior_sigma=self.prior_sigma)(parameters)
+                self.prior_loss = lambda parameters: iid_gaussian_prior_loss(prior_sigma=self.prior_sigma)(parameters)
 
         if parametersubset is None:
             self.parametersubset = dict(model.named_parameters())
@@ -60,7 +60,7 @@ class discrete_model_sampler:
         # weights here should be equal to the likelihood of the data given the parameters
         model_functional = make_functional_fwd_xs(self.model)  # get me the functional version of the model
         loss_functional = functional_loss_for_vmap(model_functional, self.parametersubset, self.loss_fn, 
-                                                   self.xs, self.ys, prior_logprob=self.prior_logprob)
+                                                   self.xs, self.ys, prior_loss=self.prior_loss)
         weights = (-vmap(loss_functional)(samples)).exp()
         weights = weights * self.tile_size
         if self.normalize_weights:

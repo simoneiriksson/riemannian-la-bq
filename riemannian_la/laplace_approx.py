@@ -4,14 +4,14 @@ from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
 
 
 class Laplace():
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
-                 prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
+                 prior_sigma=None, prior_loss=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
                  n_posterior_samples=1000, subspace_rank=None
                  ):
 
@@ -25,7 +25,7 @@ class Laplace():
         self.dataloader = dataloader
 
         self.prior_sigma = prior_sigma
-        self.prior_logprob = prior_logprob
+        self.prior_loss = prior_loss
         self.target_sigma = target_sigma
         self.loss_fn = loss_fn
         self.xs = xs
@@ -36,7 +36,7 @@ class Laplace():
             self.dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
         else: self.dataloader = dataloader
 
-        assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
+        assert (prior_loss is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
 
         # if prior_sigma is not None:  # assume Gaussian iid prior if prior_sigma is specified
         #     self.prior_logprob = iid_gaussian_prior(prior_sigma=prior_sigma)
@@ -87,7 +87,7 @@ class Laplace():
             else:
                 self.regularization = torch.eye(self.num_params, device=self.device) / self.prior_sigma**2
         else:
-            H = hessian_from_func(self.prior_logprob, self.mean)
+            H = hessian_from_func(self.prior_loss, self.mean)
             self.regularization = -H
         
         self.precision = self.hessian + self.regularization
