@@ -89,3 +89,12 @@ def gen_log_regression_data(num_train_samples=10,
                 x[class_mask] = mvn.sample((num_class_samples,))
     return make_loaders(x, y, num_train_samples, batch_size)    
 
+# function that takes a model, some observation noise, and generates data
+def gen_model_data(model, input_dist, num_train_samples=10, 
+                                   num_test_samples=10, noise_std=1.0, seed=2, batch_size=0):
+    N = num_train_samples + num_test_samples
+    with torch_seed(seed):
+        X = input_dist(N)
+        modelout = model(X).detach()
+        y = modelout + torch.randn_like(modelout) * noise_std
+    return make_loaders(X, y, num_train_samples, batch_size=batch_size)
