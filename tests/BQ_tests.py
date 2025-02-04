@@ -36,6 +36,7 @@ from emukit.core.parameter_space import ParameterSpace
 import numpy as np
 
 from RayAcquisition import RayAcquisition
+from BQ_rays_subspace import BayesianQuadrature_rays
 
 #################
 # Now for 1d test
@@ -79,7 +80,8 @@ torch.manual_seed(0)
 "lebesgue"
 
 BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="lebesgue_rescaled", integral_bounds_std=4, 
-                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True, theta_space_plot_limits=[-1,1])
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True, 
+                             theta_space_plot_limits=[-1,1], xs = xs, parametersubset=parametersubset)
 
 for i in range(4):
     integral_mean, integral_variance = BQ.step()
