@@ -122,6 +122,6 @@ class LinearModel(torch.nn.Module):
         super(LinearModel, self).__init__()
         self.lin = torch.nn.Linear(num_features, num_outputs, bias=bias)
         torch.nn.init.constant_(self.lin.weight, 0.0)
-        torch.nn.init.constant_(self.lin.bias, 0.0)
+        if bias: torch.nn.init.constant_(self.lin.bias, 0.0)
     def forward(self, x):
         return self.lin(x)
