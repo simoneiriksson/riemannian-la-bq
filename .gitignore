@@ -188,3 +188,4 @@ notes/*/*.dvi
 
 # models folder
 models/*
+emukit_notebooks/*
