@@ -45,6 +45,14 @@ def make_functional_fwd_xs(_model):
     return functional_call(_model, parameters, xs)
   return fn
 
+
+def make_functional_fwd_vector_xs(_model, parametersubset):
+  def fn(parameters, xs):
+    paramdict = vector_to_parameterdict(parameters, parametersubset=parametersubset)
+    return functional_call(_model, parameters, xs)
+  return fn
+
+
 def make_functional_fwd(_model, xs):
     def fn(parameters):
         return functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0)
