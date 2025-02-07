@@ -62,8 +62,7 @@ class Laplace():
             self.fit = self.fit_subspace
             self.is_subspacelaplace = True
 
-
-    def fit_full(self, fitting_type="hessian", xs=None, ys=None):
+    def get_hessian(self, fitting_type="hessian", xs=None, ys=None):
         _=self.model.eval()
         if xs is not None:
             dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
@@ -89,20 +88,31 @@ class Laplace():
         else:
             H = hessian_from_func(self.prior_loss, self.mean)
             self.regularization = -H
-        
-        self.precision = self.hessian + self.regularization
-        self.is_fitted = True
+        return
 
+    def fit_full(self, fitting_type="hessian", xs=None, ys=None):
+        self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
+        self.precision = self.hessian + self.regularization
         self.scale = _precision_to_scale_tril(self.precision)
         self.covariance = self.scale @ self.scale.T
+        self.is_fitted = True
         return self.mean, self.precision
 
-    def fit_subspace(self, fitting_type="hessian", xs=None, ys=None):
-        _, _ = self.fit_full(fitting_type=fitting_type, xs=xs, ys=ys)
+    def fit_subspace(self, fitting_type="hessian", xs=None, ys=None, subspace_rank=None):
+        self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
+        self.precision = self.hessian + self.regularization
+        self.covariance = self.precision.inverse()
         U, S, V = self.covariance.svd()
         self.svd_S = S
         self.svd_U = U
-        self.full_scale = self.scale
+        if subspace_rank is None:
+            subspace_rank = self.subspace_rank
+
+        if subspace_rank == 0:
+            # set subspace_rank to the rank of the covariance matrix
+            self.subspace_rank = torch.linalg.matrix_rank(self.covariance)
+            self.is_subspacelaplace = True
+            
         self.norm_scale = V[:, :self.subspace_rank]
         self.subspace_scale = self.norm_scale @ S[:self.subspace_rank].sqrt().diag()
         self.scale = self.subspace_scale
@@ -110,6 +120,8 @@ class Laplace():
         self.covariance = self.scale @ self.scale.T
         self.full_precision = self.precision
         self.precision = None
+        self.is_fitted = True
+
         return self.mean, self.full_precision
 
     def make_posterior_sample(self, n_samples=None):
