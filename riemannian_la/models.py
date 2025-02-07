@@ -133,13 +133,13 @@ class LinearModel(torch.nn.Module):
 class FunctionApproximatorModel(torch.nn.Module):
     def __init__(self, num_features=1, hidden_layers=[10], num_outputs=1, nonlin = torch.nn.ReLU(), seed=2):
         super(FunctionApproximatorModel, self).__init__()
-        self.layers = [num_features] + hidden_layers + [num_outputs]
-        self.hidden_layers = nn.ModuleList([nn.Linear(self.layers[i], self.layers[i+1]) for i in range(len(self.layers)-1)])
-        self.nonlin = nonlin
         with torch_seed(seed):
+            self.layers = [num_features] + hidden_layers + [num_outputs]
+            self.hidden_layers = nn.ModuleList([nn.Linear(self.layers[i], self.layers[i+1]) for i in range(len(self.layers)-1)])
+            self.nonlin = nonlin
             for layer in self.hidden_layers:
                 torch.nn.init.kaiming_normal_(layer.weight)
-                torch.nn.init.constant_(layer.bias, 0.0)
+                #torch.nn.init.constant_(layer.bias, 0.0)
     def forward(self, x):
         for layer in self.hidden_layers[:-1]:
             x = self.nonlin(layer(x))
