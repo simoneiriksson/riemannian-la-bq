@@ -15,12 +15,16 @@ from matplotlib import pyplot as plt
 from laplace_approx import Laplace
 import torch
 
-def integrator(sampler, model_func, parametersubset, xs):
+def integrator(sampler=None, model_func=None, parametersubset=None, xs=None):
     if hasattr(sampler, "discrete_sampler"):
         posterior_samples, weights = sampler.samples_and_weights()
     else:
         posterior_samples = sampler.posterior_samples
         weights = torch.ones(posterior_samples.shape[0])/posterior_samples.shape[0]
+    if parametersubset is None:
+        parametersubset = dict(sampler.model.named_parameters())
+    else:
+        parametersubset = dict(parametersubset)
         
     # loop over posterior samples
     for sample_no, posterior_sample in enumerate(posterior_samples):

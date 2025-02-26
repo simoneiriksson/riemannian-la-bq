@@ -48,16 +48,19 @@ accuracy = (preds == ys).sum().item()/len(ys)
 print(f"Accuracy: {accuracy}")
 
 # create Laplace object
-laplace = Laplace(model, dataloader=train_loader, prior_sigma=prior_sigma)
+laplace = Laplace(model, dataloader=train_loader, prior_sigma=prior_sigma, subspace_rank=4)
 
-# fit Laplace object
-mean1, covariance1 = laplace.fit(fitting_type="hessian")
-mean2, covariance2 = laplace.fit(fitting_type="GGN")
-# Since the model is linear, the two methods should give the same result
-print(torch.isclose(mean1, mean2).all(), torch.isclose(covariance1, covariance2).all())
 
 # make posterior samples
 posterior_samples = laplace.make_posterior_sample(n_samples=1000)
+
+plt.matshow(laplace.scale)
+plt.matshow(laplace.full_scale)
+
+plt.matshow(laplace.covariance)
+plt.matshow(laplace.full_covariance)
+
+plt.matshow(posterior_samples.T.cov().detach())
 
 # make predictive posterior samples
 x_test, y_test = next(iter(test_loader))
@@ -99,11 +102,6 @@ laplace = Laplace(model, dataloader=train_loader, prior_sigma=prior_sigma, targe
 mean1, precision1 = laplace.fit(fitting_type="hessian")
 mean2, precision2 = laplace.fit(fitting_type="GGN")
 
-print(f"{laplace.mean = }")
-print(f"{laplace.precision = }")
-print(f"{laplace.scale = }")
-print(f"{laplace.covariance = }")
-
 # Since the model is linear, the two methods should give the same result
 print(torch.isclose(mean1, mean2).all(), torch.isclose(precision1, precision2).all())
 
@@ -139,26 +137,3 @@ print(f"{precision1=}")
 print(f"{mean1=}")
 
 
-
-#################
-# Now for 1d test
-func_1d = functional_d1_halfcircle(a=1.0)
-func_1d_model = Model_from_func(func_1d, input_shape=[1])
-loss_fn = lambda preds, target: -torch.sum(preds.log())
-
-const_prior = lambda params: torch.tensor(1.0)*(params<1.0).all()*(params>-1.0).all()
-
-xs = torch.tensor([0.0]).unsqueeze(0)
-ys = func_1d(xs[0]).unsqueeze(0)
-params_init = torch.zeros(1)
-torch.nn.utils.vector_to_parameters(params_init, func_1d_model.parameters())
-parametersubset = dict(func_1d_model.named_parameters())
-
-sampler = Laplace(func_1d_model, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
-sampler.fit(fitting_type="hessian")
-tens_params_hmc = sampler.make_posterior_sample(100000)
-xs = torch.linspace(-1, 1, 100).unsqueeze(1)
-ys = func_1d(xs)
-
-_=plt.hist(tens_params_hmc.detach(), bins=100, density=True)
-plt.plot(xs, ys)

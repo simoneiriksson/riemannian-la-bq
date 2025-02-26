@@ -9,9 +9,9 @@ from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional
 
 
 
-class Laplace():
+class Laplace_subspace():
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
-                 prior_sigma=None, prior_loss=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
+                 prior_sigma=None, prior_logprob=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
                  n_posterior_samples=1000, subspace_rank=None
                  ):
 
@@ -25,7 +25,7 @@ class Laplace():
         self.dataloader = dataloader
 
         self.prior_sigma = prior_sigma
-        self.prior_loss = prior_loss
+        self.prior_logprob = prior_logprob
         self.target_sigma = target_sigma
         self.loss_fn = loss_fn
         self.xs = xs
@@ -36,7 +36,7 @@ class Laplace():
             self.dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
         else: self.dataloader = dataloader
 
-        assert (prior_loss is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
+        assert (prior_logprob is None) ^ (prior_sigma is None), "Either prior_logprob or prior_sigma, but not both must be specified"
 
         # if prior_sigma is not None:  # assume Gaussian iid prior if prior_sigma is specified
         #     self.prior_logprob = iid_gaussian_prior(prior_sigma=prior_sigma)
@@ -56,13 +56,10 @@ class Laplace():
         if self.subspace_rank is None:
             self.fit = self.fit_full
             self.subspace_rank = self.num_params
-            self.is_subspacelaplace = False
-
         else:
             self.fit = self.fit_subspace
-            self.is_subspacelaplace = True
 
-    def get_hessian(self, fitting_type="hessian", xs=None, ys=None):
+    def fit_full(self, fitting_type="hessian", xs=None, ys=None):
         _=self.model.eval()
         if xs is not None:
             dataloader = DataLoader(TensorDataset(xs, ys), batch_size=len(xs))
@@ -86,43 +83,30 @@ class Laplace():
             else:
                 self.regularization = torch.eye(self.num_params, device=self.device) / self.prior_sigma**2
         else:
-            H = hessian_from_func(self.prior_loss, self.mean)
+            H = hessian_from_func(self.prior_logprob, self.mean)
             self.regularization = -H
-        return
-
-    def fit_full(self, fitting_type="hessian", xs=None, ys=None):
-        self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
+        
         self.precision = self.hessian + self.regularization
+        self.is_fitted = True
+
         self.scale = _precision_to_scale_tril(self.precision)
         self.covariance = self.scale @ self.scale.T
-        self.is_fitted = True
         return self.mean, self.precision
 
-    def fit_subspace(self, fitting_type="hessian", xs=None, ys=None, subspace_rank=None):
-        self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
-        self.precision = self.hessian + self.regularization
-        self.covariance = self.precision.inverse()
+    def fit_subspace(self, fitting_type="hessian", xs=None, ys=None):
+        _, _ = self.fit_full(fitting_type=fitting_type, xs=xs, ys=ys)
         U, S, V = self.covariance.svd()
-        self.svd_S = S
-        self.svd_U = U
-        if subspace_rank is None:
-            subspace_rank = self.subspace_rank
-
-        if subspace_rank == 0:
-            # set subspace_rank to the rank of the covariance matrix
-            self.subspace_rank = torch.linalg.matrix_rank(self.covariance)
-            self.is_subspacelaplace = True
-            
-        self.norm_scale = V[:, :self.subspace_rank]
-        self.subspace_scale = self.norm_scale @ S[:self.subspace_rank].sqrt().diag()
+        self.full_scale = self.scale
+        subspace = V[:, :self.subspace_rank]
+        self.subspace_scale = subspace @ S[:self.subspace_rank].sqrt().diag()
         self.scale = self.subspace_scale
         self.full_covariance = self.covariance
         self.covariance = self.scale @ self.scale.T
         self.full_precision = self.precision
-        self.precision = None
+        self.precision = self.covariance.inverse()
         self.is_fitted = True
-
-        return self.mean, self.full_precision
+        
+        return self.mean, self.precision
 
     def make_posterior_sample(self, n_samples=None):
         if n_samples is None:
@@ -130,7 +114,6 @@ class Laplace():
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
         self.eps = torch.randn(n_samples, self.subspace_rank, device=self.device)
-        
         self.posterior_samples = self.mean + self.eps @ self.scale.T 
         return self.posterior_samples
 

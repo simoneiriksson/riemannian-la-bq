@@ -67,8 +67,8 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
 
             lrs.append(optimizer.param_groups[0]['lr'].item())
             optimizer.step()
-            if scheduler:
-                scheduler.step()
+        if scheduler:
+            scheduler.step()
         #train_accuracy = current_correct_num.item() / total_obs_train
         #epoch_train_accuracy.append(train_accuracy)
 

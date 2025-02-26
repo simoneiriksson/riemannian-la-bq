@@ -74,7 +74,6 @@ print(f"0) Analytical result is integral {1/4}")
 # 3) laplace integration over model
 ####################################
 
-# and now the laplace approximation with the banana function
 func_1d_model = Model_from_func(func_1d, input_shape=[1])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0]), func_1d_model.parameters())
 dict(func_1d_model.named_parameters())
@@ -104,12 +103,14 @@ const_prior = lambda params: (params<=1.0 and params>=-1.0).float() * torch.tens
 loss_fn = lambda preds, target: torch.sum(preds.log())
 
 parametersubset = dict(func_1d_model.named_parameters())
-sampler = MCMC_sampler(func_1d_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
-_=sampler.make_posterior_sample(1000)
+sampler = MCMC_sampler(func_1d_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior)
+n_samples=10000
+_=sampler.make_posterior_sample(n_samples)
 
 integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 
 print(f"When using the MCMC sampling of posterior of func_1d MODEL with {n_samples} we get {integral_mcmc = }")
+plt.hist(posterior_samples_mcmc, bins=10)
 
 
 
@@ -126,8 +127,10 @@ R_sampler.fit(fitting_type="hessian")
 
 _=R_sampler.make_posterior_sample_la(50)
 R_params = R_sampler.make_posterior_sample()
-integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
+integral_ra, function_values_ra, weights_ra, posterior_samples_ra = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
 print(f"{integral_la = }")
+
+plt.hist(posterior_samples_ra, bins=10)
 
 for i in range(1, 10):
     n_samples = 2**i

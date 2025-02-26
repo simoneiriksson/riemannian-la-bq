@@ -8,6 +8,9 @@ import torch
 from matplotlib import pyplot as plt
 import torch.nn as nn
 from utils import tensify
+from utils import torch_seed
+
+from utils import torch_seed
 
 def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
     def banana(input_2d):
@@ -58,6 +61,14 @@ def functional_d1_2(a, left_limit, right_limit):
 
     return fn
 
+
+def functional_d1_lognorm(mu, sigma):
+    mu = tensify(mu)
+    sigma = tensify(sigma)
+    def fn(x):
+        return torch.exp(-1/2 * ((torch.log(x) - mu)/sigma)**2) / (x * sigma * torch.tensor(2 * torch.pi).sqrt())
+    return fn
+
 def functional_d1_halfcircle(a):
     a = tensify(a)
 
@@ -72,6 +83,29 @@ def functional_d1_halfcircle(a):
         #return (a**2 - x**2).sqrt() / definite_integral * ((x**2 < a**2) * (x**2 > -a**2)).float()
         return torch.nan_to_num((a**2 - x**2).sqrt() / definite_integral, nan=0.0)
 
+    return fn
+
+
+
+def functional_d1_fourth_degree_poly():
+    def indef_integral(x):
+        val = 1/105 * (x**7 + 7*x**5 + 14*x**3 + 7*x)
+        return val
+    
+    definite_integral = indef_integral(1) - indef_integral(-1)
+
+    def fn(x):
+        # define a foruth degree polynomial that is zero at -1, 1, and integrates to 1 over [-1, 1]
+        y = (1 - x**2)**2 / definite_integral
+        return y * (x**2 < 1) * (x**2 > -1)
+
+    return fn
+
+def functional_d1_normal(mu, sigma):
+    mu = tensify(mu)
+    sigma = tensify(sigma)
+    def fn(x):
+        return torch.exp(-1/2 * ((x - mu)/sigma)**2) / (sigma * torch.tensor(2 * torch.pi).sqrt())
     return fn
 
 
@@ -91,6 +125,22 @@ class LinearModel(torch.nn.Module):
         super(LinearModel, self).__init__()
         self.lin = torch.nn.Linear(num_features, num_outputs, bias=bias)
         torch.nn.init.constant_(self.lin.weight, 0.0)
-        torch.nn.init.constant_(self.lin.bias, 0.0)
+        if bias: torch.nn.init.constant_(self.lin.bias, 0.0)
     def forward(self, x):
         return self.lin(x)
+
+
+class FunctionApproximatorModel(torch.nn.Module):
+    def __init__(self, num_features=1, hidden_layers=[10], num_outputs=1, nonlin = torch.nn.ReLU(), seed=2):
+        super(FunctionApproximatorModel, self).__init__()
+        with torch_seed(seed):
+            self.layers = [num_features] + hidden_layers + [num_outputs]
+            self.hidden_layers = nn.ModuleList([nn.Linear(self.layers[i], self.layers[i+1]) for i in range(len(self.layers)-1)])
+            self.nonlin = nonlin
+            for layer in self.hidden_layers:
+                torch.nn.init.kaiming_normal_(layer.weight)
+                #torch.nn.init.constant_(layer.bias, 0.0)
+    def forward(self, x):
+        for layer in self.hidden_layers[:-1]:
+            x = self.nonlin(layer(x))
+        return self.hidden_layers[-1](x)

@@ -46,9 +46,9 @@ Logistic regression model:
 
 """
 
-n_mesh = 1000
+n_mesh = 100
 curvature = 0.0
-banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=1.0)
+banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=.5)
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 class tiny_ridiculess_model_class(torch.nn.Module):
@@ -74,7 +74,8 @@ print(f"{banana_function(xs[0]) = }")
 #neg_banana = lambda x: -functional_banana(curvature=0.0, sigma_x=1.0, sigma_y=1.0)(x)
 span = 10
 limits = [[-span, span], [-span, span]]
-discrete_sampler = discrete_function_sampler(func=banana_function, limits=limits, n_mesh=n_mesh, normalize_weights=False)
+discrete_sampler = discrete_function_sampler(func=banana_function, limits=limits, n_mesh=n_mesh, 
+                                             normalize_weights=False)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
 
 banana_function(posterior_samples[0])
@@ -105,7 +106,7 @@ print(f"{banana_model(x) = }")
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0.0)
+discrete_sampler = discrete_model_sampler(banana_model, loss_fn=neglog_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0.0)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
 integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 print(f"When using discrete integration over bnana MODEL we get {integral = }")
@@ -133,9 +134,9 @@ for i in range(1, 16):
     posterior_samples_la.shape
     print(f"When using the laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_la = }")
 
-laplace.make_posterior_sample(n_samples=50)
+laplace.make_posterior_sample(n_samples=10000)
 integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(laplace, functional_evaluation_model, parametersubset, xs)
-
+laplace.posterior_samples.T.cov()
 
 plt.scatter(posterior_samples_la[:,0].detach(), posterior_samples_la[:,1].detach(), c=weights_lp.detach())
 plt.colorbar()
@@ -159,12 +160,13 @@ const_prior = lambda x: torch.tensor(0.0)
 loss_fn = lambda preds, target: torch.sum(preds.log())
 
 parametersubset = dict(banana_model.named_parameters())
-sampler = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
+sampler = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior)
 _=sampler.make_posterior_sample(10000)
+sampler.posterior_samples.T.cov()
 
 integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler, functional_evaluation_model, parametersubset, xs)
 
-print(f"When using the MCMC sampling of posterior of banana MODEL with {n_samples} we get {integral_mcmc = }")
+print(f"When using the MCMC sampling of posterior of banana MODEL with {10000} we get {integral_mcmc = }")
 
 plt.scatter(posterior_samples_mcmc[:,0].detach(), posterior_samples_mcmc[:,1].detach(), c=function_values_mcmc.detach())
 plt.colorbar()
@@ -183,36 +185,19 @@ banana_model = Model_from_func(banana_function, input_shape=[2])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
 parametersubset = dict(banana_model.named_parameters())
 
-
-laplace = Laplace(banana_model, xs=xs, ys=ys, prior_sigma=0, loss_fn=neglog_loss())
-laplace.fit(fitting_type="hessian", xs=xs, ys=ys)
-posterior_samples_la = laplace.make_posterior_sample(n_samples=10000)
-span =10
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=sum_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0.0)
-posterior_samples_disc, weights = discrete_sampler.samples_and_weights()
-
-
-
-
 R_sampler = Riemann_sampler(banana_model, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_sigma=0)
 R_sampler.fit(fitting_type="hessian")
 
-_=R_sampler.make_posterior_sample_la(50)
+_=R_sampler.make_posterior_sample_la(10000)
 R_params = R_sampler.make_posterior_sample()
-integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
-print(f"{integral_la = }")
+integral, function_values, weights, posterior_samples = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
+print(f"{integral = }")
 
-fig, ax = riemann_plotter(R_sampler, sample_markers=".", plot_traject=False, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
-la_posterior_weights = laplace.posterior_logprob(posterior_samples_disc).exp().detach()
-#ax.contour(posterior_samples_disc[:,0].reshape(n_mesh, n_mesh), posterior_samples_disc[:,1].reshape(n_mesh, n_mesh), weights.reshape(n_mesh, n_mesh))
-ax.contour(posterior_samples_disc[:,0].reshape(n_mesh, n_mesh), posterior_samples_disc[:,1].reshape(n_mesh, n_mesh), la_posterior_weights.reshape(n_mesh, n_mesh))
-weights[weights.shape[0]//2:weights.shape[0]//2+1]
-sum(weights)
+fig, ax = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
+fig, ax = riemann_plotter(R_sampler, sample_markers=None, plot_traject=False, plot_traj_marker=None)
 
-df = pd.DataFrame(posterior_samples_la.detach().numpy())
-sns.displot(df, x=0, y=1, kind="kde", ax=ax)
-plt.show()
-
+R_params.T.cov()
+R_sampler.posterior_samples_la.T.cov()
 
 for i in range(5, 8):
     n_samples = 2**i

@@ -3,25 +3,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data import Subset
 from torch.distributions import Categorical, MultivariateNormal
 from matplotlib import pyplot as plt
+from utils import torch_seed
 
-from contextlib import contextmanager
-
-@contextmanager
-def torch_seed(seed):
-    """
-    A context manager to temporarily set the random seed in PyTorch.
-    
-    Args:
-        seed (int): The seed value to use within the context.
-    """
-    # Save the current random state
-    random_state = torch.get_rng_state()
-    try:
-        torch.manual_seed(seed)
-        yield
-    finally:
-        # Restore the previous random state
-        torch.set_rng_state(random_state)
 
 def make_loaders(X, y, train_size, batch_size=0):
     X_train, X_test = X[:train_size], X[train_size:]
@@ -89,3 +72,12 @@ def gen_log_regression_data(num_train_samples=10,
                 x[class_mask] = mvn.sample((num_class_samples,))
     return make_loaders(x, y, num_train_samples, batch_size)    
 
+# function that takes a model, some observation noise, and generates data
+def gen_model_data(model, input_dist, num_train_samples=10, 
+                                   num_test_samples=10, noise_std=1.0, seed=2, batch_size=0):
+    N = num_train_samples + num_test_samples
+    with torch_seed(seed):
+        X = input_dist(N)
+        modelout = model(X).detach()
+        y = modelout + torch.randn_like(modelout) * noise_std
+    return make_loaders(X, y, num_train_samples, batch_size=batch_size)
