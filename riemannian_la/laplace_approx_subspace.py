@@ -113,8 +113,8 @@ class Laplace_subspace():
             n_samples = self.n_posterior_samples
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
-        eps = torch.randn(n_samples, self.subspace_rank, device=self.device)
-        self.posterior_samples = self.mean + eps @ self.scale.T 
+        self.eps = torch.randn(n_samples, self.subspace_rank, device=self.device)
+        self.posterior_samples = self.mean + self.eps @ self.scale.T 
         return self.posterior_samples
 
     def predictive_posterior_samples(self, xs=None):
