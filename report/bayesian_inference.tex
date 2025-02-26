@@ -1,0 +1,22 @@
+\section{Bayesian Inference}
+In predictive machine learning, we train a model that makes a prediction $y$, given some input $x$. If the model is a neural network, the most common approach is to train a model that makes a point estimate for $y$. For many purposes, it is however useful to get some uncertainty estimate for the prediction, that is, some idea of how sure our model is about the prediction. 
+One approach to this is through Bayesian methods. Assume that the model is parameterized by $\bm\theta$ and that the data set is denoted $\mathcal{D} = \bm t \vert \bm x$.
+Then Bayes rule gives us the \emph{posterior} distribution of the parameters, given the model architecture and the data that we have already seen:
+\begin{equation}
+p(\bm\theta\vert \mathcal{D} ) p(\mathcal{D} ) = p(\mathcal{D} \vert\bm\theta) p(\bm\theta) \Rightarrow
+p(\bm\theta\vert \mathcal{D} ) = \frac{p(\mathcal{D} \vert\bm\theta) p(\bm\theta) }{p(\mathcal{D})}
+\label{eq:bayesrule}
+\end{equation}
+Here the \emph{prior} distribution of the parameters $p(\bm\theta\vert \mathcal{D} )$ is any the knowledge we had about the parameter distribution before seeing our training data $\mathcal{D}$. The denominator  $p(\mathcal{D})$ in the fraction is a normalizing constant, that ensures that the fraction sums to one, if we integrate over the parameters. In general it is untractable to calculate this value for practical machine learning tasks, as it is given by the integral
+$$p(\mathcal{D}) = \int p(\mathcal{D} \vert \theta) p(\theta) d\theta, 
+$$
+which is not analytically solvable. %If the parameter space is high dimensional, it furthermore becomes untractable to integrate this using numerical methods. 
+For this reason, a range of approximative methods, such as Montoe-Carlo methods, Laplace approximation, Variational Inference and other methods. \hl{Put in references here}
+This paper discusses a combination of Laplace approximation, Riemannian Laplace approximation, and Bayesian Quadrature methods. 
+
+Assuming that we for a moment assume that the above hurdle is overcome, and that we want to estimate the predicted distribution of the target $t^\ast$ given a new input $x^\ast$, we can then integrate over the parameter distribution to get the \emph{posterior predictive}:
+\begin{equation}
+p(t^\ast\vert x^\ast) = \int p(t^\ast\vert x^\ast, \bm\theta)\cdot p(\bm\theta\vert \mathcal{D})d\bm\theta
+\label{eq:posterior_predictive}
+\end{equation}
+

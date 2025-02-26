@@ -1,0 +1,14 @@
+\section{Laplace approximation}
+One approach to approximating the posterior parameter probability, is to approximating the log posterior probability by a second degree polynomial. This is practically done by finding a Maximum Aposteriori (MAP) estimate $\bm \theta^\ast$, that maximizes $p(\bm \theta \vert \mathcal D)$. The Laplace approximation is then the normal distribution with mean $\bm \theta^\ast$ and the same covariance matrix $\Sigma_0$ as $p(\bm \theta \vert \mathcal D)$ has locally around $\bm \theta^\ast$.
+
+Let $B_0$ be the hessian of the posterior parameter log-probability:
+$$B(\theta) \coloneq H_\theta \ln p(\mathcal{D} \vert\bm\theta)  + H_\theta \ln p(\bm\theta) $$
+
+If $\Sigma_{\theta^\ast} = B^{-1}(\theta^\ast)$ is positive semi-definite, we can define a Gaussian distribution $q(\bm\theta) \sim \mathcal N(\bm \theta^\ast, \Sigma_{\theta^\ast})$ which has the property that $\left. H_\theta \ln q(\theta)\right\vert_{\theta^\ast} =\Sigma_{\theta^\ast}$.
+
+To guarantee that $\Sigma_{\theta^\ast}$ is positive semidefinite, an approximation is usually applied. In this project Generalized Gauss-Newton approximation is used \hl{REFERENCE HERE}.
+
+For smaller models, and models where the posterior distribution is guaranteed locally approximately normal, this can be a good solution. However, as seen in figure
+
+
+However, as the dimensionality of the parameter space increases
