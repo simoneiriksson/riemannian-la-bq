@@ -2,7 +2,7 @@
 
 This paper presents a method for uncertainty estimation in machine learning models, exploiting the curvature of the loss function and Bayesian Quadrature, to make efficient parameter samples from the posterior distribution.
 
-Throughout the paper, two examples will be used. The first is the \emph{banana} distribution, which is a 2d Gaussian, which has been squeezed into a half-moon shape \hl{INSERT PLOT REF}:
+Throughout the paper, two examples will be used. The first is the \emph{banana} distribution, which is a 2d Gaussian, which has been squeezed into a half-moon shape as depicted in \ref{fig_bana}:
 $$
 p(x,y) = \frac{1}{2\pi \sigma_x \sigma_y} \exp\left(-\frac{1}{2}(x/\sigma_x)^2 + (y-c\cdot x^2)/\sigma_y\right)
 $$
