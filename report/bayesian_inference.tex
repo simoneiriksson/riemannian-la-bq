@@ -7,7 +7,7 @@ p(\bm\theta\vert \mathcal{D} ) p(\mathcal{D} ) = p(\mathcal{D} \vert\bm\theta) p
 p(\bm\theta\vert \mathcal{D} ) = \frac{p(\mathcal{D} \vert\bm\theta) p(\bm\theta) }{p(\mathcal{D})}
 \label{eq:bayesrule}
 \end{equation}
-Here the \emph{prior} distribution of the parameters $p(\bm\theta\vert \mathcal{D} )$ is any the knowledge we had about the parameter distribution before seeing our training data $\mathcal{D}$. The denominator  $p(\mathcal{D})$ in the fraction is a normalizing constant, that ensures that the fraction sums to one, if we integrate over the parameters. In general it is untractable to calculate this value for practical machine learning tasks, as it is given by the integral
+Here the \emph{prior} distribution of the parameters $p(\bm\theta\vert \mathcal{D} )$ is any knowledge we had about the parameter distribution before seeing our training data $\mathcal{D}$. The denominator  $p(\mathcal{D})$ in the fraction is a normalizing constant, that ensures that the fraction sums to one, if we integrate over the parameters. In general it is untractable to calculate this value for practical machine learning tasks, as it is given by the integral
 $$p(\mathcal{D}) = \int p(\mathcal{D} \vert \theta) p(\theta) d\theta, 
 $$
 which is not analytically solvable. %If the parameter space is high dimensional, it furthermore becomes untractable to integrate this using numerical methods. 
@@ -19,4 +19,3 @@ Assuming that we for a moment assume that the above hurdle is overcome, and that
 p(t^\ast\vert x^\ast) = \int p(t^\ast\vert x^\ast, \bm\theta)\cdot p(\bm\theta\vert \mathcal{D})d\bm\theta
 \label{eq:posterior_predictive}
 \end{equation}
-
