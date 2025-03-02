@@ -33,6 +33,28 @@ $$
 $$
 Note however that the Log-map is not uniquely defined, so the reverse does not necessarily hold. Furthermore, it holds that if $c^\ast$ is the geodesic between $\theta_0$ and $\theta_1$, and $v=\text{Log}_{\theta_0}(\theta_1)$, then for any $t \in [0,1]$ it also holds that $c^\ast(t\cdot v) = \text{Exp}_{\theta_0}(t\cdot v)$.
 
+
+\begin{figure}[h]
+    \centering
+    \subfloat[First eigendirection of UFA posterior]{
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_laplace_prob.png}
+        \label{fig:UFA_laplace_prob}
+    }
+    \hfill
+    \subfloat[Full rank Laplace approximation of UFA]{
+        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_fullrank.png}
+        \label{fig:laplace_approximation_fullrank}
+    }
+    \hfill
+    \subfloat[Rank-1 Laplace approximation of UFA]{
+        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_subspace_rank1.png}
+        \label{fig:laplace_approximation_subspace_rank1}
+    }
+    \hfill
+    \caption{Laplace approximations}
+    \label{fig:examples_figs}
+\end{figure}
+
 In figure 
 
 The resulting sample
