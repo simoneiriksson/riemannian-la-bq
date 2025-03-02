@@ -2,19 +2,23 @@
 A major issue with the Riemannian Laplace approximation is that it is very computationally expensive to integrate the IVP-problem. In the following, we will discuss how to remedy this by using Bayesian Quadrature find the integral in equation \ref{eq:posterior_predictive} in an efficient way. 
 
 Bayesian Quadrature is a numerical method for integrating a function $f(\theta)$ over some measure $\pi(\theta)$: $J = \int f(\theta)\pi(\theta)d\theta$.
-Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. This also means that it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$. 
-
+Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. This also means that it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$. Figure \ref{fig:UFA_BQ_integrand_vals_1d} shows the Gaussian Process evaluated in three points, with its mean and variance. The corresponding function values and variance multiplied by the integration measure is seen in figure \ref{fig:UFA_BQ_integrand_vals_measure_1d}, and it can be seen here, that the optimal next point to evaluate must be between -1 and 0, since it is in that interval that we find the largest variance.
 
 \begin{figure}[h]
     \centering
-    \subfloat[]{
-        \includegraphics[width=.62\linewidth]{report/figures/UFA_BQ_integrand_1d.png}
-        \label{fig:UFA_BQ_integrand_1d}
+    \subfloat[Integrand values]{
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_vals_1d.png}
+        \label{fig:UFA_BQ_integrand_vals_1d}
+    }
+    \hfill
+    \subfloat[Integrand values and measure]{
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_vals_measure_1d.png}
+        \label{fig:UFA_BQ_integrand_vals_measure_1d}
     }
     \hfill
     \subfloat[]{
         \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_variance.png}
-        \label{fig:UFA_BQ_integrand_1d}
+        \label{fig:UFA_BQ_variance}
     }
     \caption{Bayesian Quadrature}
     \label{fig:bayesian_quadrature}
@@ -44,3 +48,15 @@ Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadratu
 
 Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|emukit|, we get evaluations at equidistant time steps, corresponding to multiples of $v$.
 
+\begin{figure}[h]
+    \centering
+    \subfloat[Integrand values]{
+        \includegraphics[width=1\linewidth]{report/figures/UFA_BQ_integrand_vals_2d.png}
+        \label{fig:UFA_BQ_integrand_vals_2d}
+    }
+    \caption{Bayesian Quadrature}
+    \label{fig:bayesian_quadrature}
+\end{figure}
+
+
+In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the Laplace approximation, with their 
