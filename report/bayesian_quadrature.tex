@@ -2,7 +2,24 @@
 A major issue with the Riemannian Laplace approximation is that it is very computationally expensive to integrate the IVP-problem. In the following, we will discuss how to remedy this by using Bayesian Quadrature find the integral in equation \ref{eq:posterior_predictive} in an efficient way. 
 
 Bayesian Quadrature is a numerical method for integrating a function $f(\theta)$ over some measure $\pi(\theta)$: $J = \int f(\theta)\pi(\theta)d\theta$.
-Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. This also means that it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$.
+Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. This also means that it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$. 
+
+
+\begin{figure}[h]
+    \centering
+    \subfloat[]{
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_1d.png}
+        \label{fig:UFA_BQ_integrand_1d}
+    }
+    \hfill
+    \subfloat[]{
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_2d.png}
+        \label{fig:UFA_BQ_integrand_1d}
+    }
+    \caption{Bayesian Quadrature}
+    \label{fig:bayesian_quadrature}
+\end{figure}
+
 
 In our case, $f(\theta)=p(t^\ast\vert x^\ast, \theta)$ and $\pi(\theta) = p(\theta\vert \mathcal{D})$. 
 As discussed in the previous section we approximate $p(\theta\vert \mathcal{D})$ by the Riemannian Laplace approximation which is denoted $q_\theta(\theta)$. If $v=\text{Log}_{\theta^\ast}(\theta)$ and the distribution of $v$ is given as $q_v(v)$, following \cite[p.29]{tomczak2024deep}  we get that
