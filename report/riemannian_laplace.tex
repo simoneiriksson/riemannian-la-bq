@@ -27,28 +27,35 @@ The directional vector at time 0, given by $\dot{c}^\ast_0$ uniquely determines 
 The Log-map is thus the initial velocity of the geodesic that starts from $\theta_0$ and reaches $\theta_1$ in one time unit \hl{REF BQ-paper}.
 The "inverse" of this mapping is the Exp-map, which given a starting point $\theta^\ast$ and a directional vector $v$ returns the point that is reached by moving in direction $v$ from $\theta^\ast$ on the loss manifold for one time unit. That is, if 
 $\text{Exp}_{\theta_0}(v) = c(1)$ then $v = \text{Log}_{\theta_0}(c(1))$.
-The Exp-map corresponds to solving an initial value problem for a system of differential equations, and it holds that
-$$
-\text{Exp}_{\theta_0}(\text{Log}_{\theta_0}(v)) = v.
-$$
+The Exp-map corresponds to solving an initial value problem the differential equation:
+\begin{equation}
+    \ddot{c}(t)=-\nabla_{\theta}\mathcal{L}(c(t))\left(1+\nabla_{\theta}\mathcal{L}(c(t))^{-1}\nabla_{\theta}\mathcal{L}(c(t))\right)^{-1}\langle\dot{c}(t),\mathbf{H}_{\theta}[\mathcal{L}](c(t))\dot{c}(t)\rangle.
+\end{equation}
+It then holds that $\text{Exp}_{\theta_0}(\text{Log}_{\theta_0}(v)) = v.$
 Note however that the Log-map is not uniquely defined, so the reverse does not necessarily hold. Furthermore, it holds that if $c^\ast$ is the geodesic between $\theta_0$ and $\theta_1$, and $v=\text{Log}_{\theta_0}(\theta_1)$, then for any $t \in [0,1]$ it also holds that $c^\ast(t\cdot v) = \text{Exp}_{\theta_0}(t\cdot v)$.
 
 
 \begin{figure}[h]
     \centering
-    \subfloat[]{
-        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_subspace_rank1.png}
-        \label{fig:UFA_laplace_prob}
+    \subfloat[Riemannian Laplace approximation for UFA]{
+        \includegraphics[width=.45\linewidth]{report/figures/UFA_riemannian_subspace_rank1.png}
+        \label{fig:UFA_riemannian_subspace_rank1}
     }
     \hfill
-    \subfloat[]{
-        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_fullrank.png}
-        \label{fig:laplace_approximation_fullrank}
+    \subfloat[Riemannian Laplace samples from banana distribution]{
+        \includegraphics[width=.45\linewidth]{report/figures/banana_distr_contour_riemannshots.png}
+        \label{fig:banana_distr_contour_riemannshots}
     }
-    \caption{Laplace approximations}
-    \label{fig:examples_figs}
+    \hfill
+    \subfloat[Laplace approximation to the banana distribution]{
+        \includegraphics[width=.45\linewidth]{report/figures/banana_distr_contour_laplace.png}
+        \label{fig:banana_distr_contour_laplace}
+    }
+    \caption{Riemannian Laplace approximations}
+    \label{fig:riemannian_laplaceapprox}
 \end{figure}
 
-In figure 
+In figure \ref{fig:banana_distr_contour_riemannshots} 50 evaluations of the Exp-map 
 
-The resulting sample
+In figure \ref{fig:UFA_riemannian_subspace_rank1}, we see the resulting UFA with prediction bands, as given by the Riemmanian Laplace approximation, sampled only along the first eigendirection. 
+
