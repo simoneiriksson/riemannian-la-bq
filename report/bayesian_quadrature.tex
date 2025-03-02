@@ -48,10 +48,11 @@ Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadratu
 
 Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|emukit|, we get evaluations at equidistant time steps, corresponding to multiples of $v$.
 
+\begin{comment}
 \begin{figure}[h]
     \centering
     \subfloat[Integrand values]{
-        \includegraphics[width=1\linewidth]{report/figures/UFA_BQ_integrand_vals_2d.png}
+        \includegraphics[width=1\linewidth]{report/figures/UFA_BQ_integrand_2d.png}
         \label{fig:UFA_BQ_integrand_vals_2d}
     }
     \caption{Bayesian Quadrature}
@@ -59,4 +60,6 @@ Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact t
 \end{figure}
 
 
-In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the Laplace approximation, with their 
+In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the Laplace approximation, with their corresponding traces are plotted. The 
+    
+\end{comment}
