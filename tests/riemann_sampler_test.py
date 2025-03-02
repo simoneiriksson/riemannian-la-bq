@@ -39,7 +39,7 @@ xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 params_init = torch.zeros(2)
 
-R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior)
+R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_loss=const_prior)
 R_sampler.fit(fitting_type="hessian")
 
 _=R_sampler.make_posterior_sample_la(50)
@@ -69,7 +69,7 @@ xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
 params_init = torch.zeros(2)
 
-R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_logprob=const_prior, subspace_rank=1)
+R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=loss_fn, prior_loss=const_prior, subspace_rank=1)
 R_sampler.fit(fitting_type="hessian")
 
 _=R_sampler.make_posterior_sample_la(50)
