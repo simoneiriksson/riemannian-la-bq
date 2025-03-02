@@ -1,0 +1,29 @@
+\section{Bayesian Quadrature}
+A major issue with the Riemannian Laplace approximation is that it is very computationally expensive to integrate the IVP-problem. In the following, we will discuss how to remedy this by using Bayesian Quadrature find the integral in equation \ref{eq:posterior_predictive} in an efficient way. 
+
+Bayesian Quadrature is a numerical method for integrating a function $f(\theta)$ over some measure $\pi(\theta)$: $J = \int f(\theta)\pi(\theta)d\theta$.
+Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. This also means that it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$.
+
+In our case, $f(\theta)=p(t^\ast\vert x^\ast, \theta)$ and $\pi(\theta) = p(\theta\vert \mathcal{D})$. 
+As discussed in the previous section we approximate $p(\theta\vert \mathcal{D})$ by the Riemannian Laplace approximation which is denoted $q_\theta(\theta)$. If $v=\text{Log}_{\theta^\ast}(\theta)$ and the distribution of $v$ is given as $q_v(v)$, following \cite[p.29]{tomczak2024deep}  we get that
+
+\begin{align}
+q_\theta(\theta) &= q_v(\text{Log}_{\theta^\ast}(\theta)) \cdot \left\vert \det\left( \left. \frac{\partial \text{Log}_{\theta^\ast}(z)}{\partial z}\right\vert_{z=\theta}\right) \right\vert \\
+&= q_v(\text{Log}_{\theta^\ast}(\theta)) \cdot \left\vert \det\left( \left. \frac{\partial \text{Exp}_{\theta^\ast}(z)}{\partial z}\right\vert_{z=\text{Log}_{\theta^\ast}(\theta)}\right) \right\vert^{-1} \\
+&= q_v(\text{Log}_{\theta^\ast}(\theta)) \cdot \left\vert J[{\text{Exp}_{\theta^\ast}}](\text{Log}_{\theta^\ast}(\theta)) \right\vert^{-1} \\
+\end{align}
+from which we can conclude that 
+\begin{align*}
+    q_v(v) = q_\theta(\text{Exp}_{\theta^\ast}(v)) \cdot \left\vert J[{\text{Exp}_{\theta^\ast}}](v) \right\vert
+\end{align*}
+We can expand on the primary integral with integration by substitution and get
+\begin{align*}
+J 
+&= \int f(\theta) q(\theta)d\theta \\
+&= \int f(\text{Exp}_{\theta^\ast}(v)) \cdot q_\theta(\text{Exp}_{\theta^\ast}(v)) \cdot \vert J[{\text{Exp}_{\theta^\ast}}](v) \vert dv \\
+&= \int f(\text{Exp}_{\theta^\ast}(v)) \cdot q_v(v) \vert dv
+\end{align*}
+Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadrature, and then integrate the function $f(\text{Exp}_{\theta^\ast}(v))$.
+
+Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|emukit|, we get evaluations at equidistant time steps, corresponding to multiples of $v$.
+
