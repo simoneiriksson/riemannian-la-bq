@@ -27,7 +27,7 @@ p(x,y) = \frac{1}{2\pi \sigma_x \sigma_y} \exp\left(-\frac{1}{2}(x/\sigma_x)^2 +
 $$
 where $c$ is a curvature constant.
 
-The second example is a regression problem using a small neural network as a universal function approximator (UFA).\hl{REFERENCE TO UFA HERE} The model takes a one-dimensional input and output, has two hidden layers of each 10 neurons, and uses ReLU activation function. The network has been randomly initialized, 50 training data samples has been generated with observation noise $\sigma_t=0.01$ and finally, the model has been fine-tuned to fit to the sampled data (to guarantee that the parameters actually reflects a minimum in the loss landscape). What we want to see here is a model that is certain about the mean value in the areas where there are data points, but expresses higher uncertainty in the interval $[-0.5, 0.5]$ where there is no data present.
+The second example is a regression problem using a small neural network as a universal function approximator (UFA) \cite{HORNIK1989359, UFA}. The model takes a one-dimensional input and output, has two hidden layers of each 10 neurons, and uses ReLU activation function. The network has been randomly initialized, 50 training data samples has been generated with observation noise $\sigma_t=0.05$ and finally, the model has been fine-tuned to fit to the sampled data (to guarantee that the parameters actually reflects a minimum in the loss landscape). What we want to see here is a model that is certain about the mean value in the areas where there are data points, but expresses higher uncertainty in the interval $[-0.5, 0.5]$ where there is no data present.
 
 \begin{figure}[h]
     \centering
