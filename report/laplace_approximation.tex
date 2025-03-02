@@ -7,20 +7,15 @@ Then if $\Sigma_{\theta^\ast} = B^{-1}(\theta^\ast)$ is positive semi-definite, 
 
 To guarantee that $\Sigma_{\theta^\ast}$ is positive semidefinite, an approximation is usually applied. In this paper the Generalized Gauss-Newton approximation is used \hl{REFERENCE HERE}.
 
-For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \hl{REF image}, the posterior density of the UFA, sliced along the direction of the eigenvector belonging to the dominant eigenvalue of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide confidence bands for predictions.
-
+For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \ref{fig:UFA_laplace_prob}, the posterior density of the UFA, sliced along the direction of the eigenvector belonging to the dominant eigenvalue of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide confidence bands for predictions.
 
 \begin{figure}[h]
     \centering
-    \subfloat[UFA posterior]{
-        \includegraphics[width=.45\linewidth]{report/figures/banana_distr_contour.png}
-        \label{fig:banana_distr_contour}
+    \subfloat[First eigendirection of UFA posterior]{
+        \includegraphics[width=.45\linewidth]{report/figures/UFA_laplace_prob.png}
+        \label{fig:UFA_laplace_prob}
     }
     \hfill
-    \subfloat[Universal function approximator]{
-        \includegraphics[width=.45\linewidth]{report/figures/post_trained_function.png}
-        \label{fig:post_trained_function}
-    }
     \caption{Examples}
     \label{fig:examples_figs}
 \end{figure}
