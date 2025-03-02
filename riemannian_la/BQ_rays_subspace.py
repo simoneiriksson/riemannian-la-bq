@@ -480,8 +480,8 @@ class BayesianQuadrature_rays():
     def plot_init_1d(self):
         self.plt_1d_ylimit = [self.integrand_values.min(), self.integrand_values.max()]
         self.xs_plt_1d = np.linspace(-self.limits, self.limits, self.plot_N_mesh)
-        self.function_vals = torch.stack([self.functional_fwd(obs + self.Rsampler.mean) for obs in torch.tensor(self.xs_plt_1d)]).reshape(self.plot_N_mesh)
-        self.plt_model_loss = torch.stack([self.Rsampler.f_loss(obs + self.Rsampler.mean) for obs in torch.tensor(self.xs_plt_1d)])
+        self.function_vals = torch.stack([self.functional_fwd(obs + self.Rsampler.mean) for obs in torch.tensor(self.xs_plt_1d, dtype=torch.float32)]).reshape(self.plot_N_mesh)
+        self.plt_model_loss = torch.stack([self.Rsampler.f_loss(obs + self.Rsampler.mean) for obs in torch.tensor(self.xs_plt_1d, dtype=torch.float32)])
         self.plt_likelihood = (-self.plt_model_loss).exp()
         self.function_times_likelihood = self.function_vals * self.plt_likelihood
        

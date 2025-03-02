@@ -23,6 +23,7 @@ from emukit.quadrature.methods import VanillaBayesianQuadrature, WarpedBayesianQ
 from emukit.quadrature.methods.warpings import SquareRootWarping
 from emukit.model_wrappers import GPyModelWrapper
 import numpy as np
+torch.manual_seed(0)
 
 num_features=1
 #model = LinearModel(num_features=num_features, num_outputs=1, bias = True)
@@ -149,28 +150,28 @@ plt.legend()
 plt.xlim(-1, 1)
 plt.show()
 
-# ####################################
-# # Riemann integration
-# ####################################
-# R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma,
-#                             n_posterior_samples=10, subspace_rank=None)
-# _=R_sampler.fit(fitting_type="GGN")
-# R_sampler.covariance.shape
+####################################
+# Riemann integration
+####################################
+R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma,
+                            n_posterior_samples=10, subspace_rank=None)
+_=R_sampler.fit(fitting_type="GGN")
+R_sampler.covariance.shape
 
-# _=R_sampler.make_posterior_sample(n_samples=10)
-# #fig, ax = riemann_plotter(R_sampler, plot_traject=False, sample_markers=None)
-# #ax.scatter(R_sampler.posterior_samples_la[:, 0].detach(), R_sampler.posterior_samples_la[:, 1].detach(), color="k")
-# #plt.show()
-# integral, function_values, weights, posterior_samples = integrator(R_sampler, model_func=make_functional_fwd_xs(model), xs=xs_plt)
+_=R_sampler.make_posterior_sample(n_samples=10)
+#fig, ax = riemann_plotter(R_sampler, plot_traject=False, sample_markers=None)
+#ax.scatter(R_sampler.posterior_samples_la[:, 0].detach(), R_sampler.posterior_samples_la[:, 1].detach(), color="k")
+#plt.show()
+integral, function_values, weights, posterior_samples = integrator(R_sampler, model_func=make_functional_fwd_xs(model), xs=xs_plt)
 
-# mean = integral.detach()[:, 0]
-# epistemic_var = (function_values[:,:, 0]-mean.unsqueeze(0)).pow(2).mean(dim=0).detach()
-# aleatoric_var = target_sigma**2
-# plt.scatter(xs[:, 0].detach(), ys.detach())
-# plt.plot(xs_plt[:, 0].detach(), mean)
-# plt.fill_between(xs_plt[:, 0].detach(), mean-epistemic_var.sqrt(), mean+epistemic_var.sqrt(), alpha=0.3)
-# plt.fill_between(xs_plt[:, 0].detach(), mean-(aleatoric_var + epistemic_var).sqrt(), mean+(aleatoric_var + epistemic_var).sqrt(), alpha=0.3)
-# plt.show()
+mean = integral.detach()[:, 0]
+epistemic_var = (function_values[:,:, 0]-mean.unsqueeze(0)).pow(2).mean(dim=0).detach()
+aleatoric_var = target_sigma**2
+plt.scatter(xs[:, 0].detach(), ys.detach())
+plt.plot(xs_plt[:, 0].detach(), mean)
+plt.fill_between(xs_plt[:, 0].detach(), mean-epistemic_var.sqrt(), mean+epistemic_var.sqrt(), alpha=0.3)
+plt.fill_between(xs_plt[:, 0].detach(), mean-(aleatoric_var + epistemic_var).sqrt(), mean+(aleatoric_var + epistemic_var).sqrt(), alpha=0.3)
+plt.show()
 
 
 
@@ -194,6 +195,7 @@ plt.fill_between(xs_plt[:,0], means - np.sqrt(epistemic_var), means + np.sqrt(ep
 plt.plot(xs_plt[:, 0].detach(), ys_plt_trained, c="r", label="true function")
 plt.scatter(xs[:, 0].detach(), ys.detach(), c="b", marker=".", label="data")
 plt.legend()
+plt.savefig("riemannian_subspace.png")
 plt.show()
 
 plt.plot(xs_plt, np.sqrt(aleatoric_var + epistemic_var))

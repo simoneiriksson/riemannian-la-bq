@@ -47,7 +47,7 @@ Logistic regression model:
 """
 
 n_mesh = 100
-curvature = 0.0
+curvature = 0.2
 banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=.5)
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
@@ -57,8 +57,8 @@ class tiny_ridiculess_model_class(torch.nn.Module):
         self.params = torch.nn.Parameter(torch.arange(n_params).float())
     def forward(self, x):
         #return torch.sin(self.params*3.1).sum().repeat(x.shape[0], 1)**2
-        #return torch.ones(x.shape[0], 1)
-        return self.params.sum().repeat(x.shape[0], 1)**2
+        return torch.ones(x.shape[0], 1)
+        #return self.params.sum().repeat(x.shape[0], 1)**2
         #return self.params.sum().repeat(x.shape[0], 1)+2
         
 evaluation_model = tiny_ridiculess_model_class(n_params=2)
@@ -91,6 +91,7 @@ plt.colorbar()
 plt.show()
 plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=function_values)
 plt.show()
+
 
 
 ####################################

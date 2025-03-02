@@ -4,13 +4,14 @@ import sys
 print("working dir:", os.getcwd())
 os.chdir("../riemannian_la")
 
+
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
 from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict, make_functional_fwd
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from riemannian_la.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior
+from utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from laplace_approx import Laplace
 from scipy.integrate import solve_ivp
@@ -79,16 +80,16 @@ torch.manual_seed(0)
 "lebesgue_rescaled"
 "lebesgue"
 
-BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="lebesgue_rescaled", integral_bounds_std=4, 
-                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True, 
+BQ = BayesianQuadrature_rays(R_sampler, evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=False, use_rays=False, 
                              theta_space_plot_limits=[-1,1], xs = xs, parametersubset=parametersubset)
 
-for i in range(4):
+for i in range(3):
     integral_mean, integral_variance = BQ.step()
     print(f"{i = }, {integral_mean = }, {integral_variance = }")
     # if i%1 ==0:
-fig, axes = BQ.plot()
-plt.show()
+    fig, axes = BQ.plot()
+    plt.show()
 
 function_vals = torch.stack([BQ.functional_fwd(obs) for obs in torch.tensor(BQ.thetas)])[:,0]
 plt_model_loss = torch.stack([BQ.Rsampler.f_loss(obs) for obs in torch.tensor(BQ.thetas)])
