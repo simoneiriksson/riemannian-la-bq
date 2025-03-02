@@ -1,8 +1,9 @@
 \section{Future work}
 \begin{itemize}
     \item Implement GPU-usage for all classes.
-    \item Run on a practical dataset such as FashionMNIST.
+    \item Run on a practical dataset such as FashionMNIST or some of the smaller UCI regression data sets.
     \item Test effect of scaling up/down subspace rank.
     \item Implement with usage of Laplace Redux \cite{daxberger2022laplacereduxeffortless} to make use of diagonalized/Kronecker Laplace in IVP-integration.
     \item Implement Subspace Inference as \cite{pmlr-v115-izmailov20a}, to reduce the effective number of model parameters. 
+    \item Find proof somewhere, that the acquisition function is independent of the function values. That is: the optimal samples are independent of the model input.
 \end{itemize}

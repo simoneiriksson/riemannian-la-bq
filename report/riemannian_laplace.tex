@@ -1,7 +1,7 @@
 \section{Riemannian Laplace Approximation}
 In comes the Riemanninan Laplace approximation. The idea here is to use samples from the laplace approximation, but take into account the curvature of the loss landscape, such that parameters which are far away from our MAP solution in terms of the the curvature of the loss landscape get penalized.
 
-For this purpose it is beneficial to define the loss manifold as $\mathcal M = g(\theta) = [\theta, \mathcal L(\theta)]$. Let us then consider a curve $c:[0,1] \mapsto \Theta$ on the parameter space parameterized by $t\in [0,1]$ \footnote{In the literature the curve is on the manifold. The function $g(\theta)$ gives a one-to-one correspondence between $\Theta$ and $\mathcal M$, so we can think of any operation taking place on either of the two, as we like.}. Then if $\dot c(t)$ is the time derivative of the curve, and $\bm J_{c(t)} = \left. \frac{\partial g}{\partial \theta} \right \vert_{\theta = c(t)}$ is the Jacobian of $g$ taken in the point $\theta=c(t)$, we can write out the length of the curve as \hl{REFERENCE SØREN}
+For this purpose it is beneficial to define the loss manifold as $\mathcal M = g(\theta) = [\theta, \mathcal L(\theta)]$. Let us then consider a curve $c:[0,1] \mapsto \Theta$ on the parameter space parameterized by $t\in [0,1]$ \footnote{In the literature the curve is on the manifold. The function $g(\theta)$ gives a one-to-one correspondence between $\Theta$ and $\mathcal M$, so we can think of any operation taking place on either of the two, as we like.}. Then if $\dot c(t)$ is the time derivative of the curve, and $\bm J_{c(t)} = \left. \frac{\partial g}{\partial \theta} \right \vert_{\theta = c(t)}$ is the Jacobian of $g$ taken in the point $\theta=c(t)$, following \cite{Hauberg2025} we can write out the length of the curve as 
 \begin{align*}
     \text{Length}_\mathcal M (c) 
     &= \int_0^1 \left\Vert \frac{d}{dt} g(c(t)) \right\Vert dt\\
@@ -24,10 +24,10 @@ The directional vector at time 0, given by $\dot{c}^\ast_0$ uniquely determines 
 \begin{equation*}
     \text{Log}_{\theta_0}(\theta_1) \coloneqq \dot{c}^\ast(0)
 \end{equation*}
-The Log-map is thus the initial velocity of the geodesic that starts from $\theta_0$ and reaches $\theta_1$ in one time unit \hl{REF BQ-paper}.
+The Log-map is thus the initial velocity of the geodesic that starts from $\theta_0$ and reaches $\theta_1$ in one time unit \cite{fröhlich2021bayesianquadratureriemanniandata}.
 The "inverse" of this mapping is the Exp-map, which given a starting point $\theta^\ast$ and a directional vector $v$ returns the point that is reached by moving in direction $v$ from $\theta^\ast$ on the loss manifold for one time unit. That is, if 
 $\text{Exp}_{\theta_0}(v) = c(1)$ then $v = \text{Log}_{\theta_0}(c(1))$.
-The Exp-map corresponds to solving the initial value problem for the differential equation \hl{REFERENCE Frølich paper}:
+The Exp-map corresponds to solving the initial value problem for the differential equation \cite{bergamin2023riemannian}:
 \begin{equation}
     \ddot{c}(t)=-\nabla_{\theta}\mathcal{L}(c(t))\left(1+\nabla_{\theta}\mathcal{L}(c(t))^{-1}\nabla_{\theta}\mathcal{L}(c(t))\right)^{-1}\langle\dot{c}(t),\mathbf{H}_{\theta}[\mathcal{L}](c(t))\dot{c}(t)\rangle.
 \end{equation}
