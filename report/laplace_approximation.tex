@@ -7,17 +7,27 @@ Then if $\Sigma_{\theta^\ast} = B^{-1}(\theta^\ast)$ is positive semi-definite, 
 
 To guarantee that $\Sigma_{\theta^\ast}$ is positive semidefinite, an approximation is usually applied. In this paper the Generalized Gauss-Newton approximation is used \hl{REFERENCE HERE}.
 
-For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \ref{fig:UFA_laplace_prob}, the posterior density of the UFA, sliced along the direction of the eigenvector belonging to the dominant eigenvalue of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide confidence bands for predictions.
+For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \ref{fig:UFA_laplace_prob}, the posterior density of the UFA, sliced along the direction of the eigenvector belonging to the dominant eigenvalue of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide prediction bands.
 
 \begin{figure}[h]
     \centering
     \subfloat[First eigendirection of UFA posterior]{
-        \includegraphics[width=.45\linewidth]{report/figures/UFA_laplace_prob.png}
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_laplace_prob.png}
         \label{fig:UFA_laplace_prob}
     }
     \hfill
-    \caption{Examples}
+    \subfloat[Full rank Laplace approximation of UFA]{
+        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_fullrank.png}
+        \label{fig:laplace_approximation_fullrank}
+    }
+    \hfill
+    \subfloat[Rank-1 Laplace approximation of UFA]{
+        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_subspace_rank1.png}
+        \label{fig:laplace_approximation_subspace_rank1}
+    }
+    \hfill
+    \caption{Laplace approximations}
     \label{fig:examples_figs}
 \end{figure}
 
-Similarly for the universal function estimator. When using the full laplace approximation, we see some  
+Similarly for the universal function estimator. When using the full Laplace approximation, we see some terrible parameter sampling with a mean that does not follow the true mean, and extremely wide prediction bands as seen in figure \ref{fig:laplace_approximation_fullrank}. If samples are only taken from the most important eigendirections of the covariance matrix, the results improve drastically as seen in figure \ref{fig:laplace_approximation_subspace_rank1}. We do however still see much overestimation of uncertainty due to higly improbable parameter samples as seen in figure \ref{fig:UFA_laplace_prob}. 
