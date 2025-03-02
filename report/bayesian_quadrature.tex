@@ -16,7 +16,7 @@ Briefly speaking, the assumption is that the function we want to integrate comes
         \label{fig:UFA_BQ_integrand_vals_measure_1d}
     }
     \hfill
-    \subfloat[]{
+    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for UFA]{
         \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_variance.png}
         \label{fig:UFA_BQ_variance}
     }
@@ -47,6 +47,8 @@ J
 Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadrature, and then integrate the function $f(\text{Exp}_{\theta^\ast}(v))$.
 
 Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|emukit|, we get evaluations at equidistant time steps, corresponding to multiples of $v$.
+
+Finally, in figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for UFA is plotted with the corresponding 1-standard deviation prediction band. 
 
 \begin{comment}
 \begin{figure}[h]
