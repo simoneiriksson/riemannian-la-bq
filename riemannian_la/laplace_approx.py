@@ -129,10 +129,20 @@ class Laplace():
             n_samples = self.n_posterior_samples
         if not self.is_fitted:
             raise ValueError("Model has not been fitted yet")
-        self.eps = torch.randn(n_samples, self.subspace_rank, device=self.device)
-        
-        self.posterior_samples = self.mean + self.eps @ self.scale.T 
-        return self.posterior_samples
+        new_eps = torch.randn(n_samples, self.subspace_rank, device=self.device)
+        new_posterior_samples_la = self.mean + new_eps @ self.scale.T 
+
+        if not hasattr(self, "posterior_samples"):
+            self.eps = new_eps
+            self.posterior_samples_la = new_posterior_samples_la
+        else:
+            self.eps = torch.cat([self.eps, new_eps])
+            self.posterior_samples_la = torch.cat([self.posterior_samples_la, new_posterior_samples_la])
+        return new_posterior_samples_la
+
+    @property
+    def posterior_samples(self):
+        return self.posterior_samples_la
 
     def predictive_posterior_samples(self, xs=None):
         if not self.is_fitted:

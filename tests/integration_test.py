@@ -23,7 +23,11 @@ from models import functional_banana
 from MCMC_sampler import MCMC_sampler
 import seaborn as sns
 import pandas as pd
+from BQ_rays_subspace import BayesianQuadrature_rays
 
+fig_folder = "../report/figures"
+os.makedirs(fig_folder, exist_ok=True)
+torch.manual_seed(0)
 """
 A series of usage tests for the integrator function
 Banana model:
@@ -46,8 +50,13 @@ Logistic regression model:
 
 """
 
-n_mesh = 100
-curvature = 0.2
+n_mesh = 200
+curvature = 0.25
+span = 20
+plot_xlim=(-4,4)
+plot_ylim=(-1,4)
+
+
 banana_function = functional_banana(curvature=curvature, sigma_x=2.0, sigma_y=.5)
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
 ys = banana_function(xs[0]).unsqueeze(0)
@@ -57,14 +66,17 @@ class tiny_ridiculess_model_class(torch.nn.Module):
         self.params = torch.nn.Parameter(torch.arange(n_params).float())
     def forward(self, x):
         #return torch.sin(self.params*3.1).sum().repeat(x.shape[0], 1)**2
-        return torch.ones(x.shape[0], 1)
+        #return torch.ones(x.shape[0], 1)
         #return self.params.sum().repeat(x.shape[0], 1)**2
-        #return self.params.sum().repeat(x.shape[0], 1)+2
-        
+        return self.params.sum().repeat(x.shape[0], 1)
+
+const_prior = lambda x: torch.tensor(0.0)
+
+
 evaluation_model = tiny_ridiculess_model_class(n_params=2)
 functional_evaluation_model = make_functional_fwd_xs(evaluation_model)  # make functional version of model
+limits = [[-span, span], [-span, span]]
 
-print(f"{banana_function(xs[0]) = }")
 
 ####################################
 # 1) discrete integration over function
@@ -72,19 +84,17 @@ print(f"{banana_function(xs[0]) = }")
 #Let's do discrete integration with the banana function
 #banana_function = functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0)
 #neg_banana = lambda x: -functional_banana(curvature=0.0, sigma_x=1.0, sigma_y=1.0)(x)
-span = 10
-limits = [[-span, span], [-span, span]]
-discrete_sampler = discrete_function_sampler(func=banana_function, limits=limits, n_mesh=n_mesh, 
+discrete_sampler_fn = discrete_function_sampler(func=banana_function, limits=limits, n_mesh=n_mesh, 
                                              normalize_weights=False)
-posterior_samples, weights = discrete_sampler.samples_and_weights()
+posterior_samples, weights = discrete_sampler_fn.samples_and_weights()
 
 banana_function(posterior_samples[0])
-sampler = discrete_sampler
+sampler = discrete_sampler_fn
 
 parametersubset = dict(evaluation_model.named_parameters())
 
-integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
-print(f"1) When using discrete integration over banana FUNCTION we get {integral = }")
+integral_discrete, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
+print(f"1) When using discrete integration over banana FUNCTION we get {integral_discrete = }")
 
 plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=weights)
 plt.colorbar()
@@ -93,28 +103,39 @@ plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=function_values)
 plt.show()
 
 
-
 ####################################
 # 2) discrete integration over model
 ####################################
-banana_model = Model_from_func(banana_function, input_shape=[2])
+banana_function_ = lambda x: 2*banana_function(x)
+banana_model = Model_from_func(banana_function_, input_shape=[2])
 parametersubset = dict(banana_model.named_parameters())
 x = torch.tensor([0.0, 0.0])
-print(f"{banana_function(x) = }")
+#print(f"{banana_function(x) = }")
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
-print(f"{banana_model(x) = }")
+#print(f"{banana_model(x) = }")
 
 xs = torch.tensor([0.0, 0.0]).unsqueeze(0)
-ys = banana_function(xs[0]).unsqueeze(0)
+ys = banana_function_(xs[0]).unsqueeze(0)
 
-discrete_sampler = discrete_model_sampler(banana_model, loss_fn=neglog_loss(), xs=xs, ys=ys, limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=False, prior_sigma=0.0)
+discrete_sampler = discrete_model_sampler(banana_model, loss_fn=neglog_loss(), xs=xs, ys=ys, 
+                                          limits=[[-span, span], [-span, span]], n_mesh=n_mesh, normalize_weights=True, prior_loss=const_prior)
 posterior_samples, weights = discrete_sampler.samples_and_weights()
-integral, function_values, weights, posterior_samples = integrator(sampler, functional_evaluation_model, parametersubset, xs)
-print(f"When using discrete integration over bnana MODEL we get {integral = }")
+integral_discrete, function_values, weights, posterior_samples = integrator(discrete_sampler, functional_evaluation_model, parametersubset, xs)
+print(f"When using discrete integration over bnana MODEL we get {integral_discrete = }")
 plt.scatter(posterior_samples[:,0], posterior_samples[:,1], c=weights)
 plt.colorbar()
 plt.show()
+plt.close()
 
+fig, ax =plt.subplots()
+ax.contour(posterior_samples[:,0].reshape(n_mesh, n_mesh).detach().numpy(), 
+             posterior_samples[:,1].reshape(n_mesh, n_mesh).detach().numpy(), 
+             weights.reshape(n_mesh, n_mesh).detach().numpy(), levels=10, colors="black")
+ax.set_xlim(plot_xlim)
+ax.set_ylim(plot_ylim)
+
+plt.savefig(os.path.join(fig_folder, "banana_dist_discrete_isocurves.png"))
+plt.close()
 
 ####################################
 # 3) laplace integration over model
@@ -124,29 +145,31 @@ plt.show()
 banana_model = Model_from_func(banana_function, input_shape=[2])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
 dict(banana_model.named_parameters())
+const_prior = lambda x: torch.tensor(0.0)
 
-laplace = Laplace(banana_model, xs=xs, ys=ys, prior_sigma=0, loss_fn=neglog_loss())
+laplace = Laplace(banana_model, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior)
 laplace.fit(fitting_type="hessian", xs=xs, ys=ys)
 
-for i in range(1, 16):
-    n_samples = 2**i
-    laplace.make_posterior_sample(n_samples=n_samples)
-    integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(laplace, functional_evaluation_model, parametersubset, xs)
-    posterior_samples_la.shape
-    print(f"When using the laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_la = }")
-
-laplace.make_posterior_sample(n_samples=10000)
-integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(laplace, functional_evaluation_model, parametersubset, xs)
-laplace.posterior_samples.T.cov()
+for i in range(10):
+  laplace.make_posterior_sample(n_samples=10000)
+  integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(laplace, functional_evaluation_model, parametersubset, xs)
+  laplace.posterior_samples.T.cov()
+  print(f"When using the laplace approxiation of posterior of banana MODEL with {laplace.posterior_samples.shape[0]} we get {integral_la = }")
 
 plt.scatter(posterior_samples_la[:,0].detach(), posterior_samples_la[:,1].detach(), c=weights_lp.detach())
 plt.colorbar()
 plt.show()
+plt.close()
 
 df = pd.DataFrame(posterior_samples_la.detach().numpy())
-sns.displot(df, x=0, y=1, kind="kde")
-plt.scatter(posterior_samples_la[:,0].detach(), posterior_samples_la[:,1].detach(), c=function_values_lp.detach())
+fig, ax =plt.subplots()
+sns.kdeplot(df, x=0, y=1, kind="kde", levels=10, color="black", ax=ax)
+ax.set_xlim(plot_xlim)
+ax.set_ylim(plot_ylim)
+plt.savefig(os.path.join(fig_folder, "banana_dist_laplace_isocurves.png"))
 plt.show()
+plt.close()
+#plt.scatter(posterior_samples_la[:,0].detach(), posterior_samples_la[:,1].detach(), c=function_values_lp.detach())
 
 
 #######################################
@@ -157,25 +180,29 @@ plt.show()
 # and now the laplace approximation with the banana function
 banana_model = Model_from_func(banana_function, input_shape=[2])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
-const_prior = lambda x: torch.tensor(0.0)
-loss_fn = lambda preds, target: torch.sum(preds.log())
+#loss_fn = lambda preds, target: torch.sum(preds.log())
 
 parametersubset = dict(banana_model.named_parameters())
-sampler = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior)
-_=sampler.make_posterior_sample(10000)
-sampler.posterior_samples.T.cov()
+sampler_mcmc = MCMC_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior)
+_=sampler_mcmc.make_posterior_sample(10000)
+sampler_mcmc.posterior_samples.T.cov()
 
-integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler, functional_evaluation_model, parametersubset, xs)
+integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler_mcmc, functional_evaluation_model, parametersubset, xs)
 
-print(f"When using the MCMC sampling of posterior of banana MODEL with {10000} we get {integral_mcmc = }")
+print(f"When using the MCMC sampling of posterior of banana MODEL with {sampler_mcmc.posterior_samples.shape[0]} samples we get {integral_mcmc = }")
 
 plt.scatter(posterior_samples_mcmc[:,0].detach(), posterior_samples_mcmc[:,1].detach(), c=function_values_mcmc.detach())
 plt.colorbar()
 plt.show()
+plt.close()
 
-df = pd.DataFrame(posterior_samples_mcmc.detach().numpy())
-sns.displot(df, x=0, y=1, kind="kde")
-
+df = pd.DataFrame(posterior_samples_mcmc.detach().numpy(), columns=["x", "y"])
+fig, ax =plt.subplots()
+sns.kdeplot(df, x="x", y="y", kind="kde", levels=10, color="black", ax=ax)
+ax.set_xlim(plot_xlim)
+ax.set_ylim(plot_ylim)
+plt.savefig(os.path.join(fig_folder, "banana_dist_mcmc_isocurves.png"))
+plt.close()
 
 ####################################
 # 5) Riemannian laplace integration over model
@@ -186,28 +213,79 @@ banana_model = Model_from_func(banana_function, input_shape=[2])
 torch.nn.utils.vector_to_parameters(torch.tensor([0.0, 0.0]), banana_model.parameters())
 parametersubset = dict(banana_model.named_parameters())
 
-R_sampler = Riemann_sampler(banana_model, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_sigma=0)
+R_sampler = Riemann_sampler(banana_model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior, subspace_rank=2)
 R_sampler.fit(fitting_type="hessian")
 
-_=R_sampler.make_posterior_sample_la(10000)
-R_params = R_sampler.make_posterior_sample()
-integral, function_values, weights, posterior_samples = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
-print(f"{integral = }")
+integral_vals_riemann = []
+n_samples_riemann = []
 
-fig, ax = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
-fig, ax = riemann_plotter(R_sampler, sample_markers=None, plot_traject=False, plot_traj_marker=None)
+for i in range(100):
+  #_=R_sampler.make_posterior_sample_la(1)
+  R_params = R_sampler.make_posterior_sample(10)
+  integral_riemann, function_values_riemann, weights_riemann, posterior_samples_riemann = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
+  print(f"When using Riemannian Laplace approximation with {R_sampler.posterior_samples_la.shape[0]} samples we get {integral_riemann = }")
+  integral_vals_riemann += [integral_riemann[0,0]]
+  n_samples_riemann += [R_sampler.posterior_samples_la.shape[0]]
 
-R_params.T.cov()
-R_sampler.posterior_samples_la.T.cov()
+#fig, ax = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
 
-for i in range(5, 8):
-    n_samples = 2**i
-    _=R_sampler.make_posterior_sample_la(n_samples)
-    R_params = R_sampler.make_posterior_sample()
-    integral_la, function_values_lp, weights_lp, posterior_samples_la = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
-    print(f"When using the Riemannian laplace approxiation of posterior of banana MODEL with {n_samples} we get {integral_la = }")
-    ax, fig = riemann_plotter(R_sampler, sample_markers=".", plot_traject=False, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
-    plt.show()
+df = pd.DataFrame(R_sampler.posterior_samples.numpy(), columns=["x", "y"])
+fig, ax =plt.subplots()
+sns.kdeplot(data=df, x="x", y="y", levels=10, color="black", ax=ax)
+ax.set_xlim(plot_xlim)
+ax.set_ylim(plot_ylim)
+plt.show()
+plt.savefig(os.path.join(fig_folder, "banana_dist_riemann_isocurves.png"))
+plt.close()
+
+plt.plot(n_samples_riemann, integral_vals_riemann)
+plt.savefig(os.path.join(fig_folder, "banana_dist_riemann_convergence.png"))
+plt.close()
+
+BQ = BayesianQuadrature_rays(R_sampler, evaluation_model=evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True,  
+                             use_rays=True, 
+                             theta_space_plot_limits=[[-2,2], [-2,2]], xs = xs[0], parametersubset=None)
+
+BQ.emukit_model.set_data(X=posterior_samples_riemann, Y=function_values_riemann[:,:,0])
+integral_mean, integral_variance = BQ.emukit_method.integrate()
+BQ.plot()
+
+####################################
+# 6) Bayesian Quadrature - Riemannian laplace integration over model
+####################################
+R_sampler_2d = Riemann_sampler(banana_model, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_loss=const_prior, subspace_rank=2)
+_=R_sampler_2d.fit(fitting_type="hessian")
+
+BQ_2d = BayesianQuadrature_rays(R_sampler_2d, evaluation_model=evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True,  
+                             use_rays=True, 
+                             theta_space_plot_limits=[[-2,2], [-2,2]], xs = xs[0], parametersubset=None)
+BQ_2d.theta_space_plot_limits=[[-4,4], [-4,4]]
+
+integral_vals_riemann_BQ = []
+n_samples_riemann_BQ = []
+n_steps= []
+
+for i in range(16):
+    integral_mean_BQ, integral_variance_BQ = BQ_2d.step()
+    print(f"{BQ_2d.steps = }, observations = {BQ_2d.emukit_method.X.shape[0]}, {integral_mean_BQ = }, {integral_variance_BQ = }")
+    integral_vals_riemann_BQ += [integral_mean_BQ]
+    n_samples_riemann_BQ += [BQ_2d.emukit_method.X.shape[0]]
+    n_steps += [BQ_2d.steps]
+
+fig, axes = BQ_2d.plot()
+plt.savefig(os.path.join(fig_folder, "UFA_BQ_integrand_2d.png"))
+plt.show()
+
+plt.plot(n_samples_riemann_BQ, integral_vals_riemann_BQ)
+plt.savefig(os.path.join(fig_folder, "banana_dist_riemann_convergence.png"))
+
+
+
+
+
+
 
 
 
