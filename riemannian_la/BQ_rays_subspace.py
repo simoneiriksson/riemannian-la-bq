@@ -99,7 +99,8 @@ def transform(type="sqrt", param=1):
 
 class BayesianQuadrature_rays():
     def __init__(self, Rsampler: Riemann_sampler, evaluation_model=None, measure="gaussian_rescaled", 
-                 integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, use_ray_acqusition=True, use_rays=True,
+                 integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, 
+                 use_ray_acqusition=True, use_rays=True,
                  square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None):
         self.Rsampler = Rsampler
         self.evaluation_model = evaluation_model
@@ -146,7 +147,7 @@ class BayesianQuadrature_rays():
         self.vs_ray = self.vs
         self.integrand_values = np.expand_dims(self.y_init, 0)
         self.thetas = np.expand_dims(self.theta_init, 0)
-        
+        self.steps = 0
 
 
     # GPy takes X and Y values at initialization. Those will be overwritten later when the emukit model is initialized.
@@ -232,6 +233,7 @@ class BayesianQuadrature_rays():
         self.integrand_values = np.append(self.integrand_values, self.ys_new[use_index].detach().numpy(), axis=0)
         self.emukit_method.set_data(self.vs_ray, self.integrand_values)
         self.integral_mean, self.integral_variance = self.emukit_method.integrate()
+        self.steps += 1
         return self.integral_mean, self.integral_variance
 
     def lebesgue_integrand(self, v):
