@@ -106,7 +106,7 @@ plt.show()
 ####################################
 # 2) discrete integration over model
 ####################################
-banana_function_ = lambda x: 2*banana_function(x)
+banana_function_ = lambda x: banana_function(x)
 banana_model = Model_from_func(banana_function_, input_shape=[2])
 parametersubset = dict(banana_model.named_parameters())
 x = torch.tensor([0.0, 0.0])
@@ -219,13 +219,22 @@ R_sampler.fit(fitting_type="hessian")
 integral_vals_riemann = []
 n_samples_riemann = []
 
-for i in range(100):
+BQ = BayesianQuadrature_rays(R_sampler, evaluation_model=evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
+                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True,  
+                             use_rays=True, 
+                             theta_space_plot_limits=[[-2,2], [-2,2]], xs = xs[0], parametersubset=None)
+
+for i in range(10):
   #_=R_sampler.make_posterior_sample_la(1)
   R_params = R_sampler.make_posterior_sample(10)
   integral_riemann, function_values_riemann, weights_riemann, posterior_samples_riemann = integrator(R_sampler, functional_evaluation_model, parametersubset, xs)
   print(f"When using Riemannian Laplace approximation with {R_sampler.posterior_samples_la.shape[0]} samples we get {integral_riemann = }")
   integral_vals_riemann += [integral_riemann[0,0]]
   n_samples_riemann += [R_sampler.posterior_samples_la.shape[0]]
+
+  # BQ.emukit_model.set_data(X=R_sampler.posterior_samples_la.detach(), Y=function_values_riemann[:,:,0])
+  # integral_mean, integral_variance = BQ.emukit_method.integrate()
+  # print(f"With added BQ using Riemannian Laplace approximation with {R_sampler.posterior_samples_la.shape[0]} samples we get {integral_mean = }")
 
 #fig, ax = riemann_plotter(R_sampler, sample_markers=".", plot_traject=True, plot_traj_marker=None, max_samples=None, LA_arrows=[1])
 
@@ -242,14 +251,6 @@ plt.plot(n_samples_riemann, integral_vals_riemann)
 plt.savefig(os.path.join(fig_folder, "banana_dist_riemann_convergence.png"))
 plt.close()
 
-BQ = BayesianQuadrature_rays(R_sampler, evaluation_model=evaluation_model, measure="gaussian_rescaled", integral_bounds_std=4, 
-                             GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True,  
-                             use_rays=True, 
-                             theta_space_plot_limits=[[-2,2], [-2,2]], xs = xs[0], parametersubset=None)
-
-BQ.emukit_model.set_data(X=posterior_samples_riemann, Y=function_values_riemann[:,:,0])
-integral_mean, integral_variance = BQ.emukit_method.integrate()
-BQ.plot()
 
 ####################################
 # 6) Bayesian Quadrature - Riemannian laplace integration over model
@@ -273,10 +274,11 @@ for i in range(16):
     integral_vals_riemann_BQ += [integral_mean_BQ]
     n_samples_riemann_BQ += [BQ_2d.emukit_method.X.shape[0]]
     n_steps += [BQ_2d.steps]
+    if i == 7: 
+        fig, axes = BQ_2d.plot()
+        plt.savefig(os.path.join(fig_folder, "banana_BQ_integrand_2d.png"))
+        plt.show()
 
-fig, axes = BQ_2d.plot()
-plt.savefig(os.path.join(fig_folder, "UFA_BQ_integrand_2d.png"))
-plt.show()
 
 plt.plot(n_samples_riemann_BQ, integral_vals_riemann_BQ)
 plt.savefig(os.path.join(fig_folder, "banana_dist_riemann_convergence.png"))

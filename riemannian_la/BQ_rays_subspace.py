@@ -275,6 +275,7 @@ class BayesianQuadrature_rays():
         return ys, thetas
 
     def predict_samples(self, xs):
+        # returns a tensor with one row per parameter sample (theta) and then their correpsonding predictions for each x
         for i, theta in enumerate(self.thetas):
             params = vector_to_parameterdict(torch.tensor(theta, dtype=torch.float32), self.parametersubset)
             pred = self.functional_fwd_xs(params, xs)
@@ -285,8 +286,9 @@ class BayesianQuadrature_rays():
     
     def pred_BQ(self, xs, get_mean=True, get_var=True, get_measure_variance=False, transform_type = "power", transform_param=2):
         preds = self.predict_samples(xs)
-        X_bck = self.emukit_method.X
+        X_bck = self.emukit_method.X # X here, is theta (for improved confusion / unreadability).
         Y_bck = self.emukit_method.Y
+
         # get means
         for i, pred in enumerate(preds):
             self.emukit_method.set_data(self.vs_ray, pred)
