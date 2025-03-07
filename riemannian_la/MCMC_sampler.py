@@ -23,7 +23,7 @@ import hamiltorch
 class MCMC_sampler():
     def __init__(self, model, parametersubset=None, dataloader=None, xs=None, ys=None,
                 prior_sigma=None, prior_loss=None, target_sigma=None, loss_fn=None, device="cpu", verbose=False,
-                n_posterior_samples=1000, step_size=0.3, num_steps_per_sample=5, sampler=hamiltorch.Sampler.HMC
+                n_posterior_samples=1000, step_size=0.3, num_steps_per_sample=5, sampler=hamiltorch.Sampler.HMC, burn=0
                 ):
         self.model = model
         self.functional_model = make_functional_fwd_xs(self.model)
@@ -70,6 +70,7 @@ class MCMC_sampler():
         
         self.mean = torch.nn.utils.parameters_to_vector(self.parametersubset.values())
         self.num_params = self.mean.numel()
+        self.burn = burn
 
     def make_posterior_sample(self, n_samples=None):
         if n_samples is None:
@@ -77,7 +78,7 @@ class MCMC_sampler():
 
 
         params_hmc = hamiltorch.sample(log_prob_func=self.neg_loss_func, params_init=self.mean, num_samples=n_samples,
-                                    step_size=self.step_size, num_steps_per_sample=self.num_steps_per_sample, sampler=self.sampler)
+                                    step_size=self.step_size, num_steps_per_sample=self.num_steps_per_sample, sampler=self.sampler, burn=self.burn)
         self.posterior_samples = torch.stack(params_hmc)
         return self.posterior_samples
 
