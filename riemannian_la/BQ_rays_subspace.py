@@ -330,11 +330,11 @@ class BayesianQuadrature_rays():
         eps = torch.randn(n_samples, self.Rsampler.subspace_rank)
 
         # loop over each x and prediction(x)
-        y_samples = np.zeros((preds.shape[0], n_samples, preds.shape[2]))
+        y_samples = torch.zeros((preds.shape[0], n_samples, preds.shape[2]), device=self.device)
         for i, pred in enumerate(preds):
-            self.emukit_method.set_data(self.vs_ray, pred) # we have for each value of theta some values of pred(x)
+            self.emukit_method.set_data(self.vs_ray.cpu().detach().numpy(), pred.cpu().detach().numpy()) # we have for each value of theta some values of pred(x)
             m, v = self.emukit_model.predict(eps.detach().numpy())
-            y_samples[i] = m
+            y_samples[i] = torch.tensor(m, dtype=torch.float32, device=self.device)
 
         self.emukit_method.set_data(X_bck, Y_bck)
         return y_samples
