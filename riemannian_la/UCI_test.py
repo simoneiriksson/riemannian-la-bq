@@ -86,7 +86,7 @@ xs_test, ys_test = xs_test.to(device), ys_test.to(device)
 xs_train, ys_train = train_loader.dataset.dataset.tensors
 xs_train, ys_train = xs_train.to(device), ys_train.to(device)
 
-k=8
+k=7
 subspace_ranks = [2**i for i in range(k)] + [None]
 max_BQ_riemann_samples = 64
 evals = []
