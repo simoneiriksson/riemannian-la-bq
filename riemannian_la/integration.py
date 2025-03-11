@@ -24,7 +24,7 @@ def integrator(sampler=None, model_func=None, output_func=None, parametersubset=
         posterior_samples, weights = sampler.samples_and_weights()
     else:
         posterior_samples = sampler.posterior_samples
-        weights = torch.ones(posterior_samples.shape[0])/posterior_samples.shape[0]
+        weights = torch.ones(posterior_samples.shape[0]).to(xs.device)/posterior_samples.shape[0]
 
     if parametersubset is None:
         parametersubset = dict(sampler.model.named_parameters())
@@ -36,7 +36,7 @@ def integrator(sampler=None, model_func=None, output_func=None, parametersubset=
         param_dict = vector_to_parameterdict(posterior_sample, parametersubset)
         function_value = output_func(model_func(param_dict, xs))
         if sample_no == 0: 
-            function_values = torch.zeros((len(posterior_samples), *function_value.shape))
+            function_values = torch.zeros((len(posterior_samples), *function_value.shape)).to(xs.device)
         function_values[sample_no] = function_value 
 
     integral = (function_values * weights[:, None, None] ).sum(dim=0)

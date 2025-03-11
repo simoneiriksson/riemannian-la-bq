@@ -82,7 +82,7 @@ class Laplace():
                                         ).detach()
         if self.prior_sigma is not None:
             if self.prior_sigma == 0:
-                self.regularization = torch.zeros_like(self.hessian)
+                self.regularization = torch.zeros_like(self.hessian, device=self.device)
             else:
                 self.regularization = torch.eye(self.num_params, device=self.device) / self.prior_sigma**2
         else:
@@ -99,12 +99,19 @@ class Laplace():
         return self.mean, self.precision
 
     def fit_subspace(self, fitting_type="hessian", xs=None, ys=None, subspace_rank=None):
+        #print("Hello from fit_subspace", flush=True)
         self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
+        #print("Hello from fit_subspace second debug", flush=True)
         self.precision = self.hessian + self.regularization
-        self.covariance = self.precision.inverse()
+        if self.device == "mps":
+            self.covariance = self.precision.to("cpu").inverse().to(self.device)
+        else: 
+            self.covariance = self.precision.inverse()
+        #print("Hello from fit_subspace third debug", flush=True)
         U, S, V = self.covariance.svd()
         self.svd_S = S
         self.svd_U = U
+        #print("Hello from fit_subspace fourth debug", flush=True)
         if subspace_rank is None:
             subspace_rank = self.subspace_rank
 
@@ -112,7 +119,8 @@ class Laplace():
             # set subspace_rank to the rank of the covariance matrix
             self.subspace_rank = torch.linalg.matrix_rank(self.covariance)
             self.is_subspacelaplace = True
-            
+
+
         self.norm_scale = V[:, :self.subspace_rank]
         self.subspace_scale = self.norm_scale @ S[:self.subspace_rank].sqrt().diag()
         self.scale = self.subspace_scale
@@ -121,6 +129,7 @@ class Laplace():
         self.full_precision = self.precision
         self.precision = None
         self.is_fitted = True
+        #print("Hello from fit_subspace end debug", flush=True)
 
         return self.mean, self.full_precision
 

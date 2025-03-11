@@ -61,9 +61,9 @@ class Riemann_sampler(Laplace):
         return solution
     
     def expmap_torchdiffeq(self, theta, v, num_ts=10):
-        init = torch.cat([theta, v]).to("cpu").detach()
-        ts = torch.linspace(0, 1, num_ts)
-        solution = torchdiffeq.odeint(self.ode_fun_torch, init, ts , rtol=self.rtol, atol=self.atol)
+        init = torch.cat([theta, v]).to(self.device).detach()
+        ts = torch.linspace(0, 1, num_ts).to(self.device)
+        solution = torchdiffeq.odeint(self.ode_fun_torch, init, ts , rtol=self.rtol, atol=self.atol, options={"dtype":torch.float32})
         return solution, ts
 
     def make_posterior_sample_scipy(self, n_samples=None):
@@ -86,7 +86,7 @@ class Riemann_sampler(Laplace):
         #print(f"{new_samples_la = }")
         #new_samples_la = self.make_posterior_sample_la(n_samples)
         n_samples = len(new_samples_la)
-        new_posterior_samples_riemann = torch.zeros((n_samples, self.num_params))
+        new_posterior_samples_riemann = torch.zeros((n_samples, self.num_params)).to(self.device)
         new_trajectories = []
         new_trajectories_ts = []
         for i, la_sample in enumerate(new_samples_la):

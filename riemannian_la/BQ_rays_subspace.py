@@ -130,7 +130,8 @@ class BayesianQuadrature_rays():
     def __init__(self, Rsampler: Riemann_sampler, evaluation_model=None, measure="gaussian_rescaled", 
                  integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, 
                  use_ray_acqusition=True, use_rays=True,
-                 square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None, output_func=identity_func):
+                 square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None, output_func=identity_func, device="cpu"):
+        self.device=device
         self.Rsampler = Rsampler
         self.evaluation_model = evaluation_model
         self.measure = measure
@@ -169,14 +170,17 @@ class BayesianQuadrature_rays():
         #self.v_init = torch.zeros(self.Rsampler.num_params)
         #self.model_output_init = self.y.unsqueeze(0).detach().numpy()
         self.sampling_dims = self.Rsampler.subspace_rank
-        self.v_init = np.zeros((self.sampling_dims))
-        self.y_init, self.theta_init = self.integrand(torch.tensor(self.v_init, dtype=torch.float32))
-        self.y_init, self.theta_init = self.y_init[0,:].detach().numpy(), self.theta_init[0,:].detach().numpy()   
+        self.v_init = torch.zeros((self.sampling_dims), dtype=torch.float32).to(self.device)
+        self.y_init, self.theta_init = self.integrand(self.v_init)
+        self.y_init, self.theta_init = self.y_init[0,:], self.theta_init[0,:]
         
-        self.vs = np.expand_dims(self.v_init, 0)
+        #self.vs = np.expand_dims(self.v_init, 0)
+        self.vs = self.v_init.unsqueeze(0)
         self.vs_ray = self.vs
-        self.integrand_values = np.expand_dims(self.y_init, 0)
-        self.thetas = np.expand_dims(self.theta_init, 0)
+        #self.integrand_values = np.expand_dims(self.y_init, 0)
+        self.integrand_values = self.y_init.unsqueeze(0)
+        #self.thetas = np.expand_dims(self.theta_init, 0)
+        self.thetas = self.theta_init.unsqueeze(0)
         self.steps = 0
 
 
@@ -186,26 +190,26 @@ class BayesianQuadrature_rays():
                                     lengthscale=self.GP_lengthscale,
                                     variance=self.GP_variance)
         #print(f"{self.vs.shape = }, {self.integrand_values.shape = }")
-        self.gpy_model = GPy.models.GPRegression(X=self.vs_ray, 
-                                                 Y=self.integrand_values, 
+        self.gpy_model = GPy.models.GPRegression(X=self.vs_ray.detach().cpu().numpy(), 
+                                                 Y=self.integrand_values.detach().cpu().numpy(), 
                                                  kernel=self.BQ_kernel)
         self.emukit_rbf = RBFGPy(self.gpy_model.kern)
 
         if self.measure_rescaled:
-            self.limits = self.integral_bounds_std * np.ones(self.sampling_dims) # use dimensionality of the subspace model
-            self.plot_limits = self.integral_bounds_std * np.ones(self.Rsampler.num_params) # use dimensionality of the full model
+            self.limits = self.integral_bounds_std * torch.ones(self.sampling_dims).to(self.device) # use dimensionality of the subspace model
+            self.plot_limits = self.integral_bounds_std * torch.ones(self.Rsampler.num_params).to(self.device) # use dimensionality of the full model
 
         elif not self.measure_rescaled:
             # set the limits for the integration bounds to the standard deviation of the laplace approximation times some number.
             if self.Rsampler.is_subspacelaplace:
-                scaling = self.Rsampler.svd_S[:self.sampling_dims].sqrt().detach().numpy() # use dimensionality of the subspace model
+                scaling = self.Rsampler.svd_S[:self.sampling_dims].sqrt() # use dimensionality of the subspace model
                 # perhaps this works?
             else:
-                scaling  = np.sqrt(torch.diag(self.Rsampler.covariance).detach().numpy()) # use dimensionality of the full model
+                scaling  = np.sqrt(torch.diag(self.Rsampler.covariance)) # use dimensionality of the full model
             self.limits = self.integral_bounds_std * scaling # use dimensionality of the sampling space (full or subspace)
-            self.plot_limits = self.integral_bounds_std * np.sqrt(torch.diag(self.Rsampler.covariance).detach().numpy()[-self.sampling_dims:])  # use dimensionality of the subspace model
+            self.plot_limits = self.integral_bounds_std * torch.sqrt(torch.diag(self.Rsampler.covariance)[-self.sampling_dims:])  # use dimensionality of the subspace model
         if self.square_plots:
-            self.plot_limits = self.plot_limits.max() * np.ones_like(self.plot_limits)
+            self.plot_limits = self.plot_limits.max() * torch.ones_like(self.plot_limits).to(self.device)
 
         if self.measure_type=="gaussian":
             self.emukit_measure = GaussianMeasure(mean=np.zeros(self.sampling_dims), 
@@ -220,15 +224,15 @@ class BayesianQuadrature_rays():
             limits_list_of_lists = [[-l, l] for l in self.limits]
             self.emukit_measure = LebesgueMeasure.from_bounds(limits_list_of_lists)
             self.emukit_qrbf = QuadratureRBFLebesgueMeasure(self.emukit_rbf, self.emukit_measure)
-            self.plt_measure_dist = torch.distributions.Uniform(-torch.tensor(self.plot_limits), torch.tensor(self.plot_limits))
+            self.plt_measure_dist = torch.distributions.Uniform(-self.plot_limits, self.plot_limits)
             self.plt_measure_dist.log_prob = lambda z: -torch.log((torch.tensor(self.plot_limits) * 2).prod()).repeat(z.shape[0])
 
         self.emukit_model = BaseGaussianProcessGPy(kern=self.emukit_qrbf, gpy_model=self.gpy_model)
         #self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs[0:1], Y=self.integrand_values[0:1])
         #print(f"{self.vs_ray.shape = }, {self.integrand_values.shape = }")
-        self.emukit_method = VanillaBayesianQuadrature_multidim_output(base_gp=self.emukit_model, X=self.vs_ray, Y=self.integrand_values)
+        self.emukit_method = VanillaBayesianQuadrature_multidim_output(base_gp=self.emukit_model, X=self.vs_ray.detach().cpu().numpy(), Y=self.integrand_values.detach().cpu().numpy())
         if use_ray_acqusition:
-            self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
+            self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init.detach().cpu().numpy(), self.num_timesteps)
         else:
             self.ivr_acquisition = IntegralVarianceReduction(self.emukit_method)
 
@@ -241,10 +245,11 @@ class BayesianQuadrature_rays():
     def step(self):
         v_new, acq_val = self.optimizer.optimize(self.ivr_acquisition)
         #print(f"{(v_new**2).sum() = }, {acq_val = }")
-        v_new_t = torch.tensor(v_new).squeeze(0).to(torch.float32)
-        #print(f"{v_new_t = }")
-        self.vs = np.append(self.vs, v_new, axis=0)
-        self.ys_new, thetas_new = self.integrand(v_new_t)
+        v_new_t = torch.tensor(v_new).to(torch.float32).to(self.device)
+        #print(f"{v_new = }")
+        #print(f"{self.vs = }")
+        self.vs = torch.cat([self.vs, v_new_t], dim=0)
+        self.ys_new, thetas_new = self.integrand(v_new_t.squeeze(0))
         #print(f"{self.ys_new = }, {thetas_new = }")
 
         if self.use_rays:
@@ -254,15 +259,17 @@ class BayesianQuadrature_rays():
         #print(f"{use_index = }")
         #print(f"{thetas_new.shape = }")
         #print(f"{thetas_new[use_index].shape = }")
-        self.thetas = np.append(self.thetas, thetas_new[use_index].numpy(), axis=0)
+        self.thetas = torch.cat([self.thetas, thetas_new[use_index]], dim=0)
     
-        vs_ray_new = np.linspace(self.v_init, v_new[0], self.num_timesteps)
-
-        self.vs_ray = np.append(self.vs_ray, vs_ray_new[use_index], axis=0)
+        spacing = torch.linspace(0, 1, self.num_timesteps, device=self.device).unsqueeze(-1)
+        #vs_ray_new = np.linspace(self.v_init, v_new[0], self.num_timesteps)
+        vs_ray_new = self.v_init + spacing * (v_new_t - self.v_init)
+        self.vs_ray = torch.cat([self.vs_ray, vs_ray_new[use_index]], dim=0)
         
-        self.integrand_values = np.append(self.integrand_values, self.ys_new[use_index].detach().numpy(), axis=0)
-        self.emukit_method.set_data(self.vs_ray, self.integrand_values)
-        self.integral_mean, self.integral_variance = self.emukit_method.integrate()
+        self.integrand_values = torch.cat([self.integrand_values, self.ys_new[use_index]], dim=0)
+        self.emukit_method.set_data(self.vs_ray.detach().cpu().numpy(), self.integrand_values.detach().cpu().numpy())
+        integral_mean, integral_variance = self.emukit_method.integrate()
+        self.integral_mean, self.integral_variance = torch.tensor(integral_mean, device=self.device, dtype=torch.float32), torch.tensor(integral_variance, device=self.device, dtype=torch.float32)
         self.steps += 1
         return self.integral_mean, self.integral_variance
 

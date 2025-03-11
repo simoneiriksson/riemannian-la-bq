@@ -75,11 +75,9 @@ class MCMC_sampler():
     def make_posterior_sample(self, n_samples=None):
         if n_samples is None:
             n_samples = self.n_posterior_samples
-
-
         params_hmc = hamiltorch.sample(log_prob_func=self.neg_loss_func, params_init=self.mean, num_samples=n_samples,
                                     step_size=self.step_size, num_steps_per_sample=self.num_steps_per_sample, sampler=self.sampler, burn=self.burn)
-        self.posterior_samples = torch.stack(params_hmc)
+        self.posterior_samples = torch.stack(params_hmc).to(self.device)
         return self.posterior_samples
 
 

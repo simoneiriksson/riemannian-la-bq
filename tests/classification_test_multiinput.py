@@ -32,8 +32,9 @@ torch.manual_seed(0)
 num_features=2
 num_outputs=3
 #model = LinearModel(num_features=num_features, num_outputs=1, bias = True)
+DEVICE = "mps"
 model = FunctionApproximatorModel(num_features=num_features, hidden_layers=[50,50], num_outputs=num_outputs, nonlin = torch.nn.Tanh(), seed=47)
-
+model.to(DEVICE)
 class SineModel_nd(torch.nn.Module):
     def __init__(self, num_features=1, num_outputs=1, bias=False):
         super(SineModel_nd, self).__init__()
@@ -43,6 +44,7 @@ class SineModel_nd(torch.nn.Module):
         return out
 
 gen_model = SineModel_nd(num_features=num_features, num_outputs=num_outputs)
+gen_model.to(DEVICE)
 prior_sigma = 1.
 target_sigma = 0.05
 
@@ -68,7 +70,9 @@ train_loader, test_loader = gen_model_data(gen_model, input_dist, num_train_samp
 pre_trained_params = torch.nn.utils.parameters_to_vector(model.parameters())
 
 xs, ys = train_loader.dataset.dataset.tensors
+xs, ys = xs.to(DEVICE), ys.to(DEVICE)
 xs_test, ys_test = test_loader.dataset.dataset.tensors
+xs_test, ys_test = xs_test.to(DEVICE), ys_test.to(DEVICE)
 
 # Ok, we got some data now. 
 # We already know the true mode, but because of the noise we have to post-train it, 
@@ -78,7 +82,7 @@ xs_test, ys_test = test_loader.dataset.dataset.tensors
 lr = torch.tensor(0.3)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 schedule_factor = 0.0001
-epochs= 10000
+epochs= 1000
 
 scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=schedule_factor, total_iters=epochs)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=.995)
@@ -86,7 +90,7 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=.995)
 model, _, _, _, _ = train(model, train_loader=train_loader, test_loader=test_loader, optimizer=optimizer, 
               scheduler=scheduler, epochs=epochs, 
           prior_sigma=prior_sigma, loss_fn=loss_fn,
-          device="cpu", logger_info=None,
+          device=DEVICE, logger_info=None,
           plot=False, plotpath=None, verbose = True, print_every_epoch=100, stop_lr=1e-6)
 
 trained_params = torch.nn.utils.parameters_to_vector(model.parameters())
@@ -96,23 +100,23 @@ trained_params = torch.nn.utils.parameters_to_vector(model.parameters())
 ####################################
 preds = output_func(model(xs_test))
 print("\nEvaluating point estimate")
-eval_res = eval_classification_loss(preds, ys_test)
+eval_res = eval_classification_loss(preds, ys_test, device=DEVICE)
 
 
 ####################################
 # MCMC evaluation
 ####################################
 parametersubset = dict(model.named_parameters())
-sampler_mcmc = MCMC_sampler(model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_sigma=prior_sigma)
-N_MCMC_samples = 10000
-_=sampler_mcmc.make_posterior_sample(10000)
+sampler_mcmc = MCMC_sampler(model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_sigma=prior_sigma, device=DEVICE)
+N_MCMC_samples = 100
+_=sampler_mcmc.make_posterior_sample(N_MCMC_samples)
 
 integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = integrator(sampler=sampler_mcmc, model_func=make_functional_fwd_xs(model), xs=xs_test, output_func=output_func)
 means_mcmc = function_values_mcmc.mean(dim=0).detach()
 upper95_mcmc = function_values_mcmc.quantile(.95, dim=0).detach()
 lower95_mcmc = function_values_mcmc.quantile(.05, dim=0).detach()
 print("\nEvaluating MCMC method")
-eval_res = eval_classification_loss(means_mcmc, ys_test)
+eval_res = eval_classification_loss(means_mcmc, ys_test, device=DEVICE)
 
 
 
@@ -121,7 +125,7 @@ eval_res = eval_classification_loss(means_mcmc, ys_test)
 ####################################
 subspace_rank=2
 print(f"\nDoing Laplace approximation with subspace rank: {subspace_rank}")
-laplace = Laplace(model, xs=xs, ys=ys, prior_sigma=prior_sigma, loss_fn=loss_fn, subspace_rank=subspace_rank)
+laplace = Laplace(model, xs=xs, ys=ys, prior_sigma=prior_sigma, loss_fn=loss_fn, subspace_rank=subspace_rank, device=DEVICE)
 _=laplace.fit_subspace(fitting_type="GGN", xs=xs, ys=ys)
 N_Laplace_samples = 1000
 laplace.make_posterior_sample(n_samples=N_Laplace_samples)
@@ -129,15 +133,17 @@ integral_la, function_values_la, weights_la, posterior_samples_la = integrator(s
 means_la = function_values_la.mean(dim=0).detach()
 upper95_la = function_values_la.quantile(.95, dim=0).detach()
 lower95_la = function_values_la.quantile(.05, dim=0).detach()
-_=eval_classification_loss(means_la, ys_test)
+_=eval_classification_loss(means_la, ys_test, device=DEVICE)
 
 
 
 ####################################
 # Riemann integration
 ####################################
+subspace_rank=2
+
 R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma,
-                            n_posterior_samples=10, subspace_rank=subspace_rank)
+                            n_posterior_samples=10, subspace_rank=subspace_rank, device=DEVICE)
 _=R_sampler.fit(fitting_type="GGN")
 
 _=R_sampler.make_posterior_sample(n_samples=1)
@@ -147,14 +153,14 @@ means_riemann = integral_riemann.detach()
 epistemic_var = (function_values_riemann[:,:, :]-means_riemann).pow(2).mean(dim=0).detach()
 upper95_riemann = function_values_riemann.quantile(.95, dim=0).detach()
 lower95_riemann = function_values_riemann.quantile(.05, dim=0).detach()
-_=eval_classification_loss(means_riemann, ys_test)
+_=eval_classification_loss(means_riemann, ys_test, device=DEVICE)
 
 
 ####################################
 # Riemannian subspace integration
 ####################################
 R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma,
-                            n_posterior_samples=10, subspace_rank=2)
+                            n_posterior_samples=10, subspace_rank=2, device=DEVICE)
 _=R_sampler.fit(fitting_type="GGN")
 
 for i in range(10):
@@ -173,14 +179,13 @@ _=eval_classification_loss(means_riemann, ys_test)
 ####################################
 # Bayesian Quadrature integration
 ####################################
-R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma, subspace_rank=2)
+R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma, subspace_rank=2, device=DEVICE)
 _=R_sampler.fit(fitting_type="GGN")
 
 BQ = BayesianQuadrature_rays(R_sampler, evaluation_model=model, measure="gaussian_rescaled", integral_bounds_std=4, 
                              GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True, 
                              use_rays=True, 
-                             theta_space_plot_limits=[[-1,1], [-1,1]], xs = xs[0], parametersubset=None, output_func=identity_func)
-
+                             theta_space_plot_limits=[[-1,1], [-1,1]], xs = xs[0], parametersubset=None, output_func=identity_func, device=DEVICE)
 for i in range(16):
     integral_mean, integral_variance = BQ.step()
     print(f"{i = }, observations = {BQ.emukit_method.X.shape[0]}, {integral_mean = }, {integral_variance = }")
