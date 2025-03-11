@@ -5,7 +5,7 @@ from contextlib import contextmanager
 def tensify(variable):
     if isinstance(variable, torch.Tensor):
         return variable
-    elif variable==None:
+    elif type(variable) == type(None):
         return None
     else: 
         return torch.tensor(variable, dtype=torch.float32)
@@ -40,28 +40,36 @@ def loss_func_from_target_sigma(loss_fn, target_sigma):
         loss_fn = NegLogLik_classification()
     return loss_fn
 
-def make_functional_fwd_xs(_model):
+
+def identity_func(x):
+    return x
+
+def make_functional_fwd_xs(_model, output_func=None):
+  if output_func == None: output_func=identity_func
   def fn(parameters, xs):
-    return functional_call(_model, parameters, xs)
+    return output_func(functional_call(_model, parameters, xs))
   return fn
 
 
-def make_functional_fwd_vector_xs(_model, parametersubset):
+def make_functional_fwd_vector_xs(_model, parametersubset, output_func=None):
+  if output_func == None: output_func=identity_func
   def fn(parameters, xs):
     paramdict = vector_to_parameterdict(parameters, parametersubset=parametersubset)
-    return functional_call(_model, parameters, xs)
+    return output_func(functional_call(_model, parameters, xs))
   return fn
 
 
-def make_functional_fwd(_model, xs):
+def make_functional_fwd(_model, xs, output_func=None):
+    if output_func == None: output_func=identity_func
     def fn(parameters):
-        return functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0)
+        return output_func(functional_call(_model, parameters, (xs.unsqueeze(0),)).squeeze(0))
     return fn
 
-def make_functional_fwd_vector(_model, xs, parametersubset):
+def make_functional_fwd_vector(_model, xs, parametersubset, output_func=None):
+    if output_func == None: output_func=identity_func
     def fn(parameters):
         paramdict = vector_to_parameterdict(parameters, parametersubset=parametersubset)
-        return functional_call(_model, paramdict, (xs.unsqueeze(0),)).squeeze(0)
+        return output_func(functional_call(_model, paramdict, (xs.unsqueeze(0),)).squeeze(0))
     return fn
 
     

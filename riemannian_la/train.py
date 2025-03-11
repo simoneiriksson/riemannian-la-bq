@@ -4,7 +4,7 @@ import numpy as np
 import os
 from utils import loss_func_from_target_sigma
 
-def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=None, epochs=1, 
+def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=None, epochs=1, stop_lr =1e-10,
           prior_sigma=None, prior_logprob=None,
           target_sigma=None, loss_fn=None,
           device="cpu", logger_info=None,
@@ -108,7 +108,7 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
               f", norm of gradient: {epoch_train_grad[-1]:2.5f}, test loss: {epoch_test_losses[-1]:2.5f}" + \
               f", test accuracy: {test_accuracy*100:2.2f}, lr: {optimizer.param_groups[0]['lr']:4e}"
         if verbose and (epoch % print_every_epoch==0): logger_info(txt)
-        if optimizer.param_groups[0]['lr']<1e-10:
+        if optimizer.param_groups[0]['lr']<stop_lr:
             logger_info("Stopping training because lr is too low")
             break
     if plot:

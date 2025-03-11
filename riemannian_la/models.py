@@ -128,6 +128,16 @@ class LinearModel(torch.nn.Module):
         if bias: torch.nn.init.constant_(self.lin.bias, 0.0)
     def forward(self, x):
         return self.lin(x)
+    
+
+class SineModel(torch.nn.Module):
+    def __init__(self, num_features=1, num_outputs=1, bias=False):
+        super(SineModel, self).__init__()
+        self.num_outputs = num_outputs
+    def forward(self, x):
+        out = torch.column_stack([(x + k*torch.pi*2/self.num_outputs).sin()+1 for k in range(self.num_outputs)])
+        return out
+
 
 
 class FunctionApproximatorModel(torch.nn.Module):

@@ -45,6 +45,8 @@ def input_dist(N):
     index = (1-((xs > -.5) & (xs < 0.5)).int()).nonzero()[:,0]
     return xs[index][:N]
 
+
+
 train_loader, test_loader = gen_model_data(model, input_dist, num_train_samples=50, 
                                            num_test_samples=10, noise_std=target_sigma, seed=2, batch_size=1)
 
@@ -111,7 +113,7 @@ plt.show()
 # Laplace subspace integration
 ####################################
 loss_fn = NegLogLik_regression(target_sigma=target_sigma)
-laplace = Laplace(model, xs=xs, ys=ys, prior_sigma=prior_sigma, loss_fn=loss_fn, n_posterior_samples=100, subspace_rank=1)
+laplace = Laplace(model, xs=xs, ys=ys, prior_sigma=prior_sigma, loss_fn=loss_fn, n_posterior_samples=100, subspace_rank=2)
 
 _=laplace.fit(fitting_type="GGN", xs=xs, ys=ys)
 #print(f"Covariance: {laplace.covariance}")
@@ -179,7 +181,7 @@ plt.show()
 # Riemannian subspace integration
 ####################################
 R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma,  
-                            n_posterior_samples=10, subspace_rank=1)
+                            n_posterior_samples=10, subspace_rank=2)
 R_sampler.fit(fitting_type="GGN")
 R_sampler.make_posterior_sample(n_samples=10)
 #riemann_plotter(R_sampler)
@@ -224,12 +226,13 @@ plt.show()
 
 means, epistemic_var, vars = BQ.pred_BQ(xs_plt, get_measure_variance=True, transform_type="identity")
 aleatoric_var = target_sigma**2
+epistemic_var.shape
 import numpy as np
 #plt.scatter(xs_plt.unsqueeze(1).repeat([1, preds.shape[1], 1]), preds, marker="x", c="y", label="second central moment")
 #plt.scatter(xs_plt, second_central_moments_mus - first_central_moments_mus**2, marker="x", c="g", label="first central moment")
 plt.plot(xs_plt, means, c="g", label="mean")
-plt.fill_between(xs_plt[:,0], means - np.sqrt(aleatoric_var + epistemic_var), means + np.sqrt(aleatoric_var + epistemic_var), alpha=0.3, color="darkgreen", label="epistemic + aleatoric")
-plt.fill_between(xs_plt[:,0], means - np.sqrt(epistemic_var), means + np.sqrt(epistemic_var), alpha=0.3, color="blue", label="epistemic")
+plt.fill_between(xs_plt[:,0], means[:,0] - np.sqrt(aleatoric_var + epistemic_var[:,0]), means[:,0] + np.sqrt(aleatoric_var + epistemic_var[:,0]), alpha=0.3, color="darkgreen", label="epistemic + aleatoric")
+plt.fill_between(xs_plt[:,0], means[:,0] - np.sqrt(epistemic_var[:,0]), means[:,0] + np.sqrt(epistemic_var[:,0]), alpha=0.3, color="blue", label="epistemic")
 plt.plot(xs_plt[:, 0].detach(), ys_plt_trained, c="r", label="true function")
 plt.scatter(xs[:, 0].detach(), ys.detach(), c="b", marker=".", label="data")
 plt.legend()
@@ -237,5 +240,19 @@ plt.show()
 
 plt.plot(xs_plt, np.sqrt(aleatoric_var + epistemic_var))
 plt.plot(xs_plt, np.sqrt(epistemic_var))
+plt.show()
+
+
+pred_samples = torch.tensor(BQ.pred_BQ_samples(xs_plt, 1000))
+
+BQ_samp_trans = pred_samples
+BQ_samp_trans_mean = BQ_samp_trans.mean(dim=1)
+BQ_samp_trans_95quant = BQ_samp_trans.quantile(.95, dim=1)
+BQ_samp_trans_05quant = BQ_samp_trans.quantile(.05, dim=1)
+plt.plot(xs_plt, BQ_samp_trans_mean, c="g", label="mean")
+plt.fill_between(xs_plt[:,0], BQ_samp_trans_05quant[:,0], BQ_samp_trans_95quant[:,0], alpha=0.3, color="blue", label="epistemic")
+plt.plot(xs_plt[:, 0].detach(), ys_plt_trained, c="r", label="true function")
+plt.scatter(xs[:, 0].detach(), ys.detach(), c="b", marker=".", label="data")
+plt.legend()
 plt.show()
 
