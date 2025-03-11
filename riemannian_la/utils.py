@@ -1,6 +1,9 @@
 import torch
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from contextlib import contextmanager
+import logging
+from datetime import datetime
+import os
 
 def tensify(variable):
     if isinstance(variable, torch.Tensor):
@@ -131,3 +134,33 @@ def torch_seed(seed):
     finally:
         # Restore the previous random state
         torch.set_rng_state(random_state)
+
+
+
+
+def setup_logger(base_directory, file_logging=True):
+    # set up logging
+    if file_logging:
+        
+        logger = logging.getLogger("my-logger")
+        # removing old handlers
+        logger.handlers.clear()
+        
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        os.makedirs(f"{base_directory}/logs/", exist_ok=True)
+        handler_file = logging.FileHandler(f"{base_directory}/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log", mode='w') # and log to file
+        print(f"Logging to {handler_file}")
+        handler_file.setLevel(logging.DEBUG)
+        handler_file.setFormatter(formatter)
+        logger.addHandler(handler_file)
+
+        handler_stream = logging.StreamHandler()
+        handler_stream.setLevel(logging.DEBUG)
+        handler_stream.setFormatter(formatter)
+        logger.addHandler(handler_stream)
+        logger_info = logger.info
+
+    else:
+        logger_info = print
+    return logger_info

@@ -1,8 +1,10 @@
 import os
 import sys
 # set working directory
-os.chdir("../riemannian_la")
-print(os.getcwd())
+
+#root = ""
+#os.chdir(f"{root}riemannian_la")
+#print(os.getcwd())
 
 import torch
 from matplotlib import pyplot as plt
@@ -15,7 +17,7 @@ from MCMC_sampler import MCMC_sampler
 from getdata import make_loaders, torch_seed, gen_model_data, gen_log_regression_data, get_dataloader_scipy
 from utils import NegLogLik_regression, NegLogLik_classification, identity_func
 from integration import integrator
-from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, tensify
+from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, tensify, setup_logger
 from discrete_sampler import discrete_function_sampler, discrete_model_sampler
 from riemann_sampler import Riemann_sampler, riemann_plotter
 from BQ_rays_subspace import BayesianQuadrature_rays, transform
@@ -27,16 +29,24 @@ import seaborn as sns
 import pandas as pd
 import torchmetrics
 from classification_eval import eval_classification_loss
+from datetime import datetime
+import pickle
+
+base_directory = "."
+logger_info = setup_logger(base_directory, file_logging=True)
+logger_info('Start logging')
+logger_info(f"base_directory: {base_directory}")
+
 
 torch.manual_seed(0)
-train_loader, test_loader, classes = get_dataloader_scipy("wine", train_share=.9 , batch_size=16)
+train_loader, test_loader, classes = get_dataloader_scipy("wine", train_share=.8 , batch_size=16, select_features=[0,1,2,4,5,6,7,8])
 
 num_features = next(iter(train_loader))[0].shape[1]
 num_outputs=classes
 
 #model = LinearModel(num_features=num_features, num_outputs=1, bias = True)
-model = FunctionApproximatorModel(num_features=num_features, hidden_layers=[50,50], num_outputs=num_outputs, nonlin = torch.nn.Tanh(), seed=47)
-
+model = FunctionApproximatorModel(num_features=num_features, hidden_layers=[num_features*2,num_features*2], num_outputs=num_outputs, nonlin = torch.nn.Tanh(), seed=47)
+logger_info(f"model size: {torch.nn.utils.parameters_to_vector(model.parameters()).shape[0]}")
 prior_sigma = 1.
 
 def output_dist(y):
@@ -59,19 +69,23 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=.995)
 model, _, _, _, _ = train(model, train_loader=train_loader, test_loader=test_loader, optimizer=optimizer, 
               scheduler=scheduler, epochs=epochs, 
           prior_sigma=prior_sigma, loss_fn=loss_fn,
-          device="cpu", logger_info=None,
+          device="cpu", logger_info=logger_info,
           plot=False, plotpath=None, verbose = True, print_every_epoch=100, stop_lr=1e-6)
 
-xs, ys = train_loader.dataset.dataset.tensors
+xs_train, ys_train = train_loader.dataset.dataset.tensors
+xs_train.shape
 xs_test, ys_test = test_loader.dataset.dataset.tensors
 
+k=5
+subspace_ranks = [2**i for i in range(k)] + [None]
+max_BQ_riemann_samples = 64
 evals = {}
 
 ####################################
 # Ok, we have trained the model. Evaluate point estimates
 ####################################
 preds = output_func(model(xs_test))
-print("Evaluating point estimate")
+logger_info("\nEvaluating point estimate")
 eval_res = eval_classification_loss(preds, ys_test)
 evals["Point estimate"] = {"samples": 1, "subspace_rank":None, "Results":eval_res}
 
@@ -80,7 +94,7 @@ evals["Point estimate"] = {"samples": 1, "subspace_rank":None, "Results":eval_re
 # MCMC evaluation
 ####################################
 parametersubset = dict(model.named_parameters())
-sampler_mcmc = MCMC_sampler(model, parametersubset, xs=xs, ys=ys, loss_fn=neglog_loss(), prior_sigma=prior_sigma)
+sampler_mcmc = MCMC_sampler(model, parametersubset, xs=xs_train, ys=ys_train, loss_fn=neglog_loss(), prior_sigma=prior_sigma)
 N_MCMC_samples = 10000
 _=sampler_mcmc.make_posterior_sample(10000)
 
@@ -88,45 +102,65 @@ integral_mcmc, function_values_mcmc, weights_mcmc, posterior_samples_mcmc = inte
 means_mcmc = function_values_mcmc.mean(dim=0).detach()
 upper95_mcmc = function_values_mcmc.quantile(.95, dim=0).detach()
 lower95_mcmc = function_values_mcmc.quantile(.05, dim=0).detach()
-print("Evaluating MCMC method")
-eval_res = eval_classification_loss(means_mcmc, ys_test)
+logger_info("\nEvaluating MCMC method")
+eval_res = eval_classification_loss(means_mcmc, ys_test, logger=logger_info)
 evals["MCMC"] = {"samples": N_MCMC_samples, "subspace_rank":None, "Results":eval_res}
 
 ####################################
 # Now we can try to fit a Laplace approximation to the posterior
 ####################################
-subspace_ranks = [2**i for i in range(8)] + [None]
-
 for subspace_rank in subspace_ranks:
-    print(f"Doing Laplace approximation with subspace rank: {subspace_rank}")
-    laplace = Laplace(model, xs=xs, ys=ys, prior_sigma=prior_sigma, loss_fn=loss_fn, subspace_rank=subspace_rank)
-    _=laplace.fit_subspace(fitting_type="GGN", xs=xs, ys=ys)
+    logger_info(f"\nDoing Laplace approximation with subspace rank: {subspace_rank}")
+    laplace = Laplace(model, xs=xs_train, ys=ys_train, prior_sigma=prior_sigma, loss_fn=loss_fn, subspace_rank=subspace_rank)
+    _=laplace.fit_subspace(fitting_type="GGN", xs=xs_train, ys=ys_train)
     N_Laplace_samples = 1000
     laplace.make_posterior_sample(n_samples=N_Laplace_samples)
     integral_la, function_values_la, weights_la, posterior_samples_la = integrator(sampler=laplace, model_func=make_functional_fwd_xs(model), xs=xs_test, output_func=output_func)
     means_la = function_values_la.mean(dim=0).detach()
     upper95_la = function_values_la.quantile(.95, dim=0).detach()
     lower95_la = function_values_la.quantile(.05, dim=0).detach()
-    _=eval_classification_loss(means_la, ys_test)
+    eval_res=eval_classification_loss(means_la, ys_test, logger=logger_info)
     evals["Laplace"] = {"samples": N_MCMC_samples, "subspace_rank":subspace_rank, "Results":eval_res}
+
+
+####################################
+# Riemannian subspace integration
+####################################
+R_sampler = Riemann_sampler(model, xs=xs_train, ys=ys_train, loss_fn=loss_fn, prior_sigma=prior_sigma,
+                            n_posterior_samples=10, subspace_rank=subspace_rank)
+_=R_sampler.fit(fitting_type="GGN")
+
+logger_info(f"\nDoing Riemannian Laplace approximation with subspace rank: {subspace_rank}")
+for i in range(max_BQ_riemann_samples//10):
+    logger_info(f"\nSampling {i}")
+    _=R_sampler.make_posterior_sample(n_samples=1)
+    logger_info(f"Done sampling {i}")
+    integral_riemann, function_values_riemann, weights, posterior_samples = integrator(R_sampler, model_func=make_functional_fwd_xs(model), xs=xs_test, output_func=output_func)
+    means_riemann = integral_riemann.detach()
+    epistemic_var = (function_values_riemann[:,:, :]-means_riemann).pow(2).mean(dim=0).detach()
+    upper95_riemann = function_values_riemann.quantile(.95, dim=0).detach()
+    lower95_riemann = function_values_riemann.quantile(.05, dim=0).detach()
+    eval_res=eval_classification_loss(means_riemann, ys_test, logger=logger_info)
+    evals["Riemann"] = {"samples": R_sampler.posterior_samples.shape[0], "subspace_rank":subspace_rank, "Results":eval_res}
 
 ####################################
 # Bayesian Quadrature integration
 ####################################
 for subspace_rank in subspace_ranks:
-    print(f"Doing BQ-Riemann Laplace approximation with subspace rank: {subspace_rank}")
+    if subspace_rank == None: continue
+    logger_info(f"\n\nDoing BQ-Riemann Laplace approximation with subspace rank: {subspace_rank}")
 
-    R_sampler = Riemann_sampler(model, xs=xs, ys=ys, loss_fn=loss_fn, prior_sigma=prior_sigma, subspace_rank=subspace_rank)
+    R_sampler = Riemann_sampler(model, xs=xs_train, ys=ys_train, loss_fn=loss_fn, prior_sigma=prior_sigma, subspace_rank=subspace_rank)
     _=R_sampler.fit(fitting_type="GGN")
 
     BQ = BayesianQuadrature_rays(R_sampler, evaluation_model=model, measure="gaussian_rescaled", integral_bounds_std=4, 
                                 GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=7, use_ray_acqusition=True, 
                                 use_rays=True, 
-                                theta_space_plot_limits=[[-1,1], [-1,1]], xs = xs[0], parametersubset=None, output_func=identity_func)
+                                theta_space_plot_limits=[[-1,1], [-1,1]], xs = xs_train[0], parametersubset=None, output_func=identity_func)
 
-    for i in range(64):
+    for i in range(max_BQ_riemann_samples):
         integral_mean, integral_variance = BQ.step()
-        print(f"{i = }, samples = {BQ.emukit_method.X.shape[0]}, {integral_mean = }, {integral_variance = }")
+        logger_info(f"{i = }, samples = {BQ.emukit_method.X.shape[0]}, {integral_mean = }, {integral_variance = }")
 
         test_output_func = output_func
         pred_samples = torch.tensor(BQ.pred_BQ_samples(xs_test, 1000))
@@ -135,10 +169,14 @@ for subspace_rank in subspace_ranks:
         BQ_samp_trans_mean = BQ_samp_trans.mean(dim=1)
         BQ_samp_trans_95quant = BQ_samp_trans.quantile(.95, dim=1)
         BQ_samp_trans_05quant = BQ_samp_trans.quantile(.05, dim=1)
-        eval_res = eval_classification_loss(means_la, ys_test)
+        eval_res = eval_classification_loss(BQ_samp_trans_mean, ys_test, logger=logger_info)
         N_BQ_Riemman_samples = BQ.emukit_method.X.shape[0]
         evals["BQ-Riemann"] = {"samples": N_BQ_Riemman_samples, "subspace_rank":subspace_rank, "Results":eval_res}
 
+logger_info("Done with evaluations, now saving")
 
 
-
+stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+filename = f"{base_directory}/evaluations/experiment_eval_{stamp}.pkl"
+with open(filename, 'wb') as handle:
+    pickle.dump(evals, handle)

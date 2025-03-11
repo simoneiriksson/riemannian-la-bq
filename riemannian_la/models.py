@@ -138,6 +138,13 @@ class SineModel(torch.nn.Module):
         out = torch.column_stack([(x + k*torch.pi*2/self.num_outputs).sin()+1 for k in range(self.num_outputs)])
         return out
 
+class SineModel_2d(torch.nn.Module):
+    def __init__(self, num_features=1, num_outputs=1, bias=False):
+        super(SineModel, self).__init__()
+        self.num_outputs = num_outputs
+    def forward(self, x):
+        out = torch.column_stack([(x + k*torch.pi*2/self.num_outputs).sin()+1 for k in range(self.num_outputs)])
+        return out
 
 
 class FunctionApproximatorModel(torch.nn.Module):

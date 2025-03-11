@@ -12,6 +12,8 @@ from torch.utils.data import Subset
 
 def make_loaders(X, y, train_size, batch_size=0):
     indices = torch.randperm(len(X))
+    #print(f"{X.shape = }")
+    #print(f"{y.shape = }")
     X_ = X[indices]
     y_ = y[indices]
     X_train, X_test = X_[:train_size], X_[train_size:]
@@ -89,12 +91,15 @@ def gen_model_data(model, input_dist, num_train_samples=10,
     with torch_seed(seed):
         X = input_dist(N)
         modelout = model(X).detach()
+        #print(f"{modelout.shape = }")
         #y = modelout + torch.randn_like(modelout) * noise_std
         y = output_dist(modelout).sample()
+        #print(f"{y.shape = }")
+        #print(f"{X.shape = }")
     return make_loaders(X, y, num_train_samples, batch_size=batch_size)
 
 
-def get_dataloader_scipy(dataset, datafolder=None, train_share=.9 , batch_size=16):
+def get_dataloader_scipy(dataset, datafolder=None, train_share=.9 , batch_size=16, select_features=None):
     if dataset == "iris":
         dataset = load_iris()
 
@@ -103,8 +108,10 @@ def get_dataloader_scipy(dataset, datafolder=None, train_share=.9 , batch_size=1
 
     elif dataset == "diabetes":
         dataset = load_diabetes()
-
-    X = torch.tensor(dataset.data, dtype=torch.float32)
+    if select_features == None:
+        X = torch.tensor(dataset.data, dtype=torch.float32)
+    else:
+        X = torch.tensor(dataset.data, dtype=torch.float32)[:,select_features]
     y = torch.tensor(dataset.target, dtype=torch.int64)
     if hasattr(dataset, "target_names"):
         num_classes = dataset.target_names.shape[0]

@@ -225,7 +225,7 @@ class BayesianQuadrature_rays():
 
         self.emukit_model = BaseGaussianProcessGPy(kern=self.emukit_qrbf, gpy_model=self.gpy_model)
         #self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs[0:1], Y=self.integrand_values[0:1])
-        print(f"{self.vs_ray.shape = }, {self.integrand_values.shape = }")
+        #print(f"{self.vs_ray.shape = }, {self.integrand_values.shape = }")
         self.emukit_method = VanillaBayesianQuadrature_multidim_output(base_gp=self.emukit_model, X=self.vs_ray, Y=self.integrand_values)
         if use_ray_acqusition:
             self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
