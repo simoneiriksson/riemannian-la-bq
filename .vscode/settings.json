@@ -1,0 +1,12 @@
+{
+    "sync-rsync.flags": "rlptv",
+    "sync-rsync.sites": [
+            {
+                "localPath": "/Users/simondanieleiriksson/Documents/DTU-kurser-lokalt/Specialkursus Georgios/riemannian-la",
+                "remotePath": "gbar2:/zhome/50/8/132685/BNN/riemannian-la",
+                "host": "gbar2",
+                "exclude": ["/.env", "/.venv", "/.vscode", "__pycache__"]
+            }
+        ],
+        "python.REPL.enableREPLSmartSend": false
+}
