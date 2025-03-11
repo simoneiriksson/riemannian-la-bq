@@ -8,7 +8,7 @@ from utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_p
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from laplace_approx import Laplace
 from scipy.integrate import solve_ivp
-from utils import make_functional_fwd_xs, functional_loss_for_vmap, neglog_loss, make_functional_fwd_vector
+from utils import make_functional_fwd_xs, functional_loss_for_vmap, neglog_loss, make_functional_fwd_vector, identity_func
 from models import functional_banana, Model_from_func, functional_d1_halfcircle, functional_d1_2, functional_d1, functional_d1_fourth_degree_poly, LinearModel, functional_d1_normal
 from matplotlib import pyplot as plt
 from MCMC_sampler import MCMC_sampler
@@ -22,17 +22,27 @@ from FullGaussianMeasure import FullGaussianMeasure
 from emukit.model_wrappers.gpy_quadrature_wrappers import BaseGaussianProcessGPy, RBFGPy
 from emukit.model_wrappers import GPyModelWrapper
 
-from emukit.quadrature.kernels import QuadratureRBFLebesgueMeasure, QuadratureRBFGaussianMeasure
+from emukit.quadrature.kernels import QuadratureRBFLebesgueMeasure, QuadratureRBFGaussianMeasure, QuadratureRBF
 from emukit.quadrature.measures import LebesgueMeasure, GaussianMeasure
 
 from emukit.quadrature.methods import VanillaBayesianQuadrature, WarpedBayesianQuadratureModel, BoundedBayesianQuadrature
-from emukit.quadrature.methods.warpings import SquareRootWarping
+from emukit.quadrature.methods.warpings import SquareRootWarping, IdentityWarping
 from emukit.quadrature.acquisitions import IntegralVarianceReduction
 from emukit.core.optimization import GradientAcquisitionOptimizer
 from emukit.core.parameter_space import ParameterSpace
+from emukit.quadrature.interfaces.base_gp import IBaseGaussianProcess
+from emukit.quadrature.kernels import GaussianEmbedding, LebesgueEmbedding, QuadratureKernel
+from emukit.quadrature.interfaces.standard_kernels import IRBF
+
 import numpy as np
 
 from RayAcquisition import RayAcquisition
+
+from typing import Tuple
+
+import numpy as np
+
+
 
 def reasonable_box_fixed(self_object, factor=4):
     def fn():
@@ -94,14 +104,33 @@ def transform(type="sqrt", param=1):
 
     return fn_forward, fn_backward
 
+class VanillaBayesianQuadrature_multidim_output(WarpedBayesianQuadratureModel):
+    def __init__(self, base_gp: IBaseGaussianProcess, X: np.ndarray, Y: np.ndarray):
+        super(VanillaBayesianQuadrature_multidim_output, self).__init__(base_gp=base_gp, warping=IdentityWarping(), X=X, Y=Y)
 
+    def predict_base(self, X_pred: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        m, cov = self.base_gp.predict(X_pred)
+        return m, cov, m, cov
+
+    def predict_base_with_full_covariance(self, X_pred: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        m, cov = self.base_gp.predict_with_full_covariance(X_pred)
+        return m, cov, m, cov
+
+    def integrate(self) -> Tuple[float, float]:
+        kernel_mean_X = self.base_gp.kern.qK(self.X)
+        integral_mean = np.dot(kernel_mean_X, self.base_gp.graminv_residual())[0, :]
+        integral_var = self.base_gp.kern.qKq() - (kernel_mean_X @ self.base_gp.solve_linear(kernel_mean_X.T))[0, 0]
+        return integral_mean, integral_var
+
+    def get_prediction_gradients(self, X: np.ndarray) -> Tuple:
+        return self.base_gp.get_prediction_gradients(X)
 
 
 class BayesianQuadrature_rays():
     def __init__(self, Rsampler: Riemann_sampler, evaluation_model=None, measure="gaussian_rescaled", 
                  integral_bounds_std=2, GP_lengthscale=1.0, GP_variance=1.0, num_timesteps=10, 
                  use_ray_acqusition=True, use_rays=True,
-                 square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None):
+                 square_plots=True, theta_space_plot_limits=None, xs=None, parametersubset=None, output_func=identity_func):
         self.Rsampler = Rsampler
         self.evaluation_model = evaluation_model
         self.measure = measure
@@ -115,8 +144,9 @@ class BayesianQuadrature_rays():
             self.parametersubset = parametersubset
 
 
-        self.functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubset=self.parametersubset)
-        self.functional_fwd_xs = make_functional_fwd_xs(evaluation_model)
+        self.output_func = output_func
+        self.functional_fwd = make_functional_fwd_vector(evaluation_model, xs, parametersubset=self.parametersubset, output_func=output_func)
+        self.functional_fwd_xs = make_functional_fwd_xs(evaluation_model, output_func=output_func)
 
         self.num_timesteps = num_timesteps
         self.square_plots = square_plots
@@ -196,7 +226,7 @@ class BayesianQuadrature_rays():
         self.emukit_model = BaseGaussianProcessGPy(kern=self.emukit_qrbf, gpy_model=self.gpy_model)
         #self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs[0:1], Y=self.integrand_values[0:1])
         print(f"{self.vs_ray.shape = }, {self.integrand_values.shape = }")
-        self.emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs_ray, Y=self.integrand_values)
+        self.emukit_method = VanillaBayesianQuadrature_multidim_output(base_gp=self.emukit_model, X=self.vs_ray, Y=self.integrand_values)
         if use_ray_acqusition:
             self.ivr_acquisition = RayAcquisition(self.emukit_method, self.v_init, self.num_timesteps)
         else:
@@ -284,28 +314,49 @@ class BayesianQuadrature_rays():
             preds[i] = pred
         return preds.permute(1,0,2)
     
-    def pred_BQ(self, xs, get_mean=True, get_var=True, get_measure_variance=False, transform_type = "power", transform_param=2):
+    def pred_BQ_samples(self, xs, n_samples=100):
         preds = self.predict_samples(xs)
         X_bck = self.emukit_method.X # X here, is theta (for improved confusion / unreadability).
         Y_bck = self.emukit_method.Y
 
-        # get means
+        # sample z's to evaluate GP in
+        eps = torch.randn(n_samples, self.Rsampler.subspace_rank)
+
+        # loop over each x and prediction(x)
+        y_samples = np.zeros((preds.shape[0], n_samples, preds.shape[2]))
         for i, pred in enumerate(preds):
-            self.emukit_method.set_data(self.vs_ray, pred)
-            mu, var = self.emukit_method.integrate()
+            self.emukit_method.set_data(self.vs_ray, pred) # we have for each value of theta some values of pred(x)
+            m, v = self.emukit_model.predict(eps.detach().numpy())
+            y_samples[i] = m
+
+        self.emukit_method.set_data(X_bck, Y_bck)
+        return y_samples
+
+    def pred_BQ(self, xs, get_mean=True, get_var=True, get_measure_variance=False, transform_type = "power", transform_param=2):
+        preds = self.predict_samples(xs)
+        X_bck = self.emukit_method.X # X here, is = z (for improved confusion / unreadability).
+        Y_bck = self.emukit_method.Y
+
+        # get means
+        # loop over each x and prediction(x)
+        for i, pred in enumerate(preds):
+            self.emukit_method.set_data(self.vs_ray, pred) #we have for each value of theta some values of pred(x)
+            mu, var = self.emukit_method.integrate() # integrate the function pred(theta given x)
             if i == 0:
                 first_moments_mus = torch.zeros((len(preds), *mu.shape))
                 first_moments_vars = torch.zeros((len(preds), *var.shape))
-            first_moments_mus[i] = mu
-            first_moments_vars[i] = var
+            first_moments_mus[i] = tensify(mu)
+            first_moments_vars[i] = tensify(var)
         
         forward_transform, backwards_transform = transform(transform_type, param=transform_param)
 
         # get second moment
         for i, pred in enumerate(preds):
-            sqr_error = (preds[i] -first_moments_mus.unsqueeze(1).unsqueeze(2)[i])**2
-            emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs_ray, Y=forward_transform(sqr_error))
-            mu, var = emukit_method.integrate()
+            sqr_error = (preds[i] -first_moments_mus.unsqueeze(1)[i])**2
+            self.emukit_method.set_data(self.vs_ray, forward_transform(sqr_error))
+            mu, var = self.emukit_method.integrate()
+            #emukit_method = VanillaBayesianQuadrature(base_gp=self.emukit_model, X=self.vs_ray, Y=forward_transform(sqr_error))
+            #mu, var = emukit_method.integrate()
             if i == 0:
                 central_second_moment_mus = torch.zeros((len(preds), *mu.shape))
                 central_second_moment_vars = torch.zeros((len(preds), *var.shape))

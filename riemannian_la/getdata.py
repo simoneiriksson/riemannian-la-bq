@@ -5,10 +5,18 @@ from torch.distributions import Categorical, MultivariateNormal
 from matplotlib import pyplot as plt
 from utils import torch_seed
 
+from torchvision.datasets import mnist, CIFAR10
+from sklearn.datasets import load_iris, load_wine, load_diabetes
+from torchvision.transforms import ToTensor
+from torch.utils.data import Subset
 
 def make_loaders(X, y, train_size, batch_size=0):
-    X_train, X_test = X[:train_size], X[train_size:]
-    y_train, y_test = y[:train_size], y[train_size:]
+    indices = torch.randperm(len(X))
+    X_ = X[indices]
+    y_ = y[indices]
+    X_train, X_test = X_[:train_size], X_[train_size:]
+    y_train, y_test = y_[:train_size], y_[train_size:]
+
     train_dataset = TensorDataset(X_train, y_train)
     test_dataset = TensorDataset(X_test, y_test)
     subset_test = Subset(test_dataset, indices=range(len(test_dataset) // 1))
@@ -74,10 +82,33 @@ def gen_log_regression_data(num_train_samples=10,
 
 # function that takes a model, some observation noise, and generates data
 def gen_model_data(model, input_dist, num_train_samples=10, 
-                                   num_test_samples=10, noise_std=1.0, seed=2, batch_size=0):
+                                   num_test_samples=10, noise_std=None, output_dist = None, seed=2, batch_size=0):
     N = num_train_samples + num_test_samples
+    if output_dist == None:
+        output_dist = lambda x: torch.distributions.Normal(x, noise_std)
     with torch_seed(seed):
         X = input_dist(N)
         modelout = model(X).detach()
-        y = modelout + torch.randn_like(modelout) * noise_std
+        #y = modelout + torch.randn_like(modelout) * noise_std
+        y = output_dist(modelout).sample()
     return make_loaders(X, y, num_train_samples, batch_size=batch_size)
+
+
+def get_dataloader_scipy(dataset, datafolder=None, train_share=.9 , batch_size=16):
+    if dataset == "iris":
+        dataset = load_iris()
+
+    elif dataset == "wine":
+        dataset = load_wine()
+
+    elif dataset == "diabetes":
+        dataset = load_diabetes()
+
+    X = torch.tensor(dataset.data, dtype=torch.float32)
+    y = torch.tensor(dataset.target, dtype=torch.int64)
+    if hasattr(dataset, "target_names"):
+        num_classes = dataset.target_names.shape[0]
+    else: num_classes = None
+    num_train_samples = int(X.shape[0] * train_share)
+    train_loader, test_loader = make_loaders(X, y, num_train_samples, batch_size)
+    return train_loader, test_loader, num_classes 
