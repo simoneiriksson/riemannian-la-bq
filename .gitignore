@@ -189,3 +189,5 @@ notes/*/*.dvi
 # models folder
 models/*
 emukit_notebooks/*
+jobs/*
+evaluations/*
