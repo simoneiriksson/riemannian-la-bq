@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 from laplace_approx import Laplace
 import torch
 
-def integrator(sampler=None, model_func=None, output_func=None, parametersubset=None, xs=None):
+def integrator(sampler=None, model_func=None, parametersubset=None, xs=None, output_func=None):
     # if no output function defined, use identity function
     if output_func==None:
         output_func = identity_func
