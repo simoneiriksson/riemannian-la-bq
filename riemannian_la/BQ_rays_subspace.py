@@ -438,8 +438,8 @@ class BayesianQuadrature_rays():
         ax.contourf(self.xs_plt, self.ys_plt, self.function_times_likelihood.detach(), cmap="viridis")
         ax.scatter(self.thetas[:,0] - self.Rsampler.mean[0].detach().numpy(), self.thetas[:,1] - self.Rsampler.mean[1].detach().numpy(), c="k", marker="x")
         
-        rays = self.thetas[1:].reshape(-1, self.num_timesteps-1, 2).transpose(0, 2, 1)
-        rays2 = np.concatenate([np.tile(self.thetas[None, 0, None].transpose(0, 2, 1), [rays.shape[0],1,1]), rays] , axis=2)
+        rays = self.thetas[1:].reshape(-1, self.num_timesteps-1, 2).permute(0, 2, 1)
+        rays2 = np.concatenate([np.tile(self.thetas[None, 0, None].permute(0, 2, 1), [rays.shape[0],1,1]), rays] , axis=2)
 
         for i, sample in enumerate(rays2):
             ax.plot(sample[0]-self.Rsampler.mean[0].detach().numpy(), 
