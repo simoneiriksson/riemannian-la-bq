@@ -117,7 +117,7 @@ class Laplace():
 
         if subspace_rank == 0:
             # set subspace_rank to the rank of the covariance matrix
-            self.subspace_rank = torch.linalg.matrix_rank(self.covariance)
+            self.subspace_rank = torch.linalg.matrix_rank(self.covariance.cpu()).to(self.device)
             self.is_subspacelaplace = True
 
 
