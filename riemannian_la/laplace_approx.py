@@ -93,7 +93,10 @@ class Laplace():
     def fit_full(self, fitting_type="hessian", xs=None, ys=None):
         self.get_hessian(fitting_type=fitting_type, xs=xs, ys=ys)
         self.precision = self.hessian + self.regularization
-        self.scale = _precision_to_scale_tril(self.precision)
+        if self.device == "mps":
+            self.scale = _precision_to_scale_tril(self.precision.cpu()).to(self.device)
+        else:
+            self.scale = _precision_to_scale_tril(self.precision)
         self.covariance = self.scale @ self.scale.T
         self.is_fitted = True
         return self.mean, self.precision
