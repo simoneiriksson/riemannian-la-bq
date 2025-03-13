@@ -17,7 +17,7 @@ Briefly speaking, the assumption is that the function we want to integrate comes
     }
     \hfill
     \subfloat[Bayesian Quadrature Riemannian Laplace approximation for UFA]{
-        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_variance.png}
+        \includegraphics[width=.31\linewidth]{report/figures/UFA_riemannian_BQ_subspace_rank2.png}
         \label{fig:UFA_BQ_variance}
     }
     \caption{Bayesian Quadrature}
@@ -51,7 +51,7 @@ Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact t
 The acquisition function is then extended to include the sum of the acquisition function evaluated at each point $v\cdot k/n$.
 In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the rank-2 Laplace approximation is plotted, with their corresponding traces. 
 
-Finally, in figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for UFA is plotted with the corresponding 1-standard deviation prediction band. 
+Finally, in figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for UFA is plotted with the corresponding 95\% band for the mean and for the observations. 
 
 \begin{figure}[h]
     \centering

@@ -7,7 +7,7 @@ Then if $\Sigma_{\theta^\ast} = B^{-1}(\theta^\ast)$ is positive semi-definite, 
 
 To guarantee that $\Sigma_{\theta^\ast}$ is positive semidefinite, an approximation is usually applied. In this paper the Generalized Gauss-Newton approximation is used \cite{ksnxr_ggn}.
 
-For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \ref{fig:UFA_laplace_prob}, the posterior density of the UFA, sliced along the direction of the eigenvector belonging to the dominant eigenvalue of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide prediction bands.
+For smaller models, and models where the posterior distribution is guaranteed locally approximately Gaussian, this can be a good solution. However, as the dimensionality of the parameter space increases, the probability that the posterior distribution is non-Gaussian along one of the axes increases. In figure \ref{fig:UFA_laplace_prob}, the posterior density of the UFA, sliced along the direction of the eigenvectors belonging to the two dominant eigenvalues of the covariance matrix, is displayed along with its Laplace approximation. As can be seen in this example, the Laplace approximation has relatively much support for parameter values that gives rise to high loss. This is problematic, since parameter samples from these areas will result in wildly wrong prediction functions, which in turn means too wide prediction bands.
 
 \begin{figure}[h]
     \centering
@@ -21,8 +21,8 @@ For smaller models, and models where the posterior distribution is guaranteed lo
         \label{fig:laplace_approximation_fullrank}
     }
     \hfill
-    \subfloat[Rank-1 Laplace approximation of UFA]{
-        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_subspace_rank1.png}
+    \subfloat[Rank-2 Laplace approximation of UFA]{
+        \includegraphics[width=.31\linewidth]{report/figures/laplace_approximation_subspace_rank2.png}
         \label{fig:laplace_approximation_subspace_rank1}
     }
     \hfill
