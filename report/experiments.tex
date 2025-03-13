@@ -1,25 +1,50 @@
 \section{Experiments}
-We test the Bayesian Quadrature Riemannian Laplace approximation using a small toy classification data set and the UCI Wine data set. The tou dataset consist of a single input dimension, and three classes as seen in figure \ref{fig:}. We compare the Bayesian Quadrature with the normal Riemannian Laplace approximation, a vanilla Laplace approximation and the MAP solution. 
+We test the Bayesian Quadrature Riemannian Laplace approximation using a small toy classification data set and the UCI Wine data set. The toy dataset consist of a single input dimension, and three classes as seen in figure \ref{fig:synth_data}, where the samples from the three classes are represented by dots, and the underlying true probabilities are represented by the three coloured lines. 
+
+For both experiments, we compare the Bayesian Quadrature with the normal Riemannian Laplace approximation, a vanilla Laplace approximation and the MAP solution. 
 
 For the Bayesian Quadrature model, the predictive distribution is approximated by taking Monte Carlo sampling where we take $1000$ parameter samples from the quadrature approximation and calculate mean and prediction intervals from this.
-
 
 \begin{figure}[h]
     \centering
     \subfloat[Integrand values]{
-        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_vals_1d.png}
-        \label{fig:UFA_BQ_integrand_vals_1d}
+        \includegraphics[width=.31\linewidth]{report/figures/data.png}
+        \label{fig:synth_data}
     }
     \hfill
     \subfloat[Integrand values and measure]{
-        \includegraphics[width=.31\linewidth]{report/figures/UFA_BQ_integrand_vals_measure_1d.png}
-        \label{fig:UFA_BQ_integrand_vals_measure_1d}
+        \includegraphics[width=.31\linewidth]{report/figures/data.png}
+        \label{fig:meh}
     }
     \hfill
     \subfloat[Bayesian Quadrature Riemannian Laplace approximation for UFA]{
-        \includegraphics[width=.31\linewidth]{report/figures/UFA_riemannian_BQ_subspace_rank2.png}
-        \label{fig:UFA_BQ_variance}
+        \includegraphics[width=.31\linewidth]{report/figures/data.png}
+        \label{fig:meh}
     }
-    \caption{Bayesian Quadrature}
-    \label{fig:bayesian_quadrature1}
+    \caption{Synth data experiment}
+    \label{fig:}
 \end{figure}
+
+The results from the UCI Wine data set experiment can be seen in table \ref{tab:UCI_wine_table1}. For comparison, the MAP log likelihood is $-0.1330$. Thus, it is clear that both the BQ-Riemann and the Riemann approximation have slightly higher likelihood than the MAP estimate. However, it is also clear that the BQ-Riemann approximation deteriorate quickly as the subspace rank increases. 
+
+
+
+\begin{table}[H]
+\caption{UCI Wine LogLikelihood}
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Subspace rank & BQ-Riemann & Laplace & Riemann \\
+\midrule
+1 & -0.1210 & -0.1582 & -0.1202 \\
+2 & -0.1182 & -0.1592 & -0.1130 \\
+4 & -0.8297 & -0.1601 & -0.1175 \\
+8 & -0.8511 & -0.1898 & -0.1251 \\
+16 & -1.0043 & -0.2177 & -0.1254 \\
+32 & -1.0979 & -0.2503 & -0.1294 \\
+64 & -1.0986 & -0.3112 & -0.1432 \\
+128 & -1.0986 & -0.4575 & -0.1533 \\
+Full rank & NaN & -1.0592 & -0.2349 \\
+\bottomrule
+\end{tabular}
+\end{table}
