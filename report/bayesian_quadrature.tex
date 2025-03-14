@@ -1,8 +1,8 @@
 \section{Bayesian Quadrature}
-A major issue with the Riemannian Laplace approximation is that it is very computationally expensive to integrate the IVP-problem. In the following, we will discuss how to remedy this by using Bayesian Quadrature find the integral in equation \ref{eq:posterior_predictive} in an efficient way. 
+A major issue with the Riemannian Laplace approximation is that it is very computationally expensive to solve the IVP-problem. In the following, we will discuss how to remedy this by using Bayesian Quadrature to find the integral in equation \ref{eq:posterior_predictive} in an efficient way. 
 
 Bayesian Quadrature is a numerical method for integrating a function $f(\theta)$ over some measure $\pi(\theta)$: $J = \int f(\theta)\pi(\theta)d\theta$.
-Briefly speaking, the assumption is that the function we want to integrate comes from a Gaussian Process distribution. In this case, the integral $J$ becomes a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance can be calculated. If the integration measure is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. The amount of variance reduction from a new datapoint is measured by the acquisition function, and by maximizing this function, it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$. Figure \ref{fig:UFA_BQ_integrand_vals_1d} shows the Gaussian Process evaluated in three points, with its mean and variance. The corresponding function values and variance multiplied by the integration measure is seen in figure \ref{fig:UFA_BQ_integrand_vals_measure_1d}, and it can be seen here, that the optimal next point to evaluate must be between -1 and 0, since it is in that interval that we find the largest variance.
+Briefly speaking, the assumption is that the function we want to integrate is drawn from a Gaussian Process distribution. If this is the case, the integral $J$ is a random variable and given a set of observations of $\theta$ and $f(\theta)$, the mean and variance of $J$ can be calculated. If the integration measure $\pi$ is Gaussian, the mean and variance can be found analytically \cite{Bayesian_quadrature}. The amount of variance reduction from a new datapoint is measured by the acquisition function, and by maximizing this function, it is computationally feasible to find the next value of $\theta$ that will minimize the variance of $J$. Figure \ref{fig:UFA_BQ_integrand_vals_1d} shows the Gaussian Process evaluated in three points, with its mean and variance. The corresponding function values and variance multiplied by the integration measure is seen in figure \ref{fig:UFA_BQ_integrand_vals_measure_1d}, and it can be seen here, that the optimal next point to evaluate must be between -1 and 0, since it is in that interval that we find the largest variance.
 
 \begin{figure}[h]
     \centering
@@ -16,11 +16,11 @@ Briefly speaking, the assumption is that the function we want to integrate comes
         \label{fig:UFA_BQ_integrand_vals_measure_1d}
     }
     \hfill
-    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for UFA]{
+    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for the function approximator]{
         \includegraphics[width=.31\linewidth]{report/figures/UFA_riemannian_BQ_subspace_rank2.png}
         \label{fig:UFA_BQ_variance}
     }
-    \caption{Bayesian Quadrature}
+    \caption{Bayesian Quadrature approximation}
     \label{fig:bayesian_quadrature1}
 \end{figure}
 
@@ -46,19 +46,6 @@ J
 \end{align*}
 Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadrature, and then integrate the function $f(\text{Exp}_{\theta^\ast}(v))$.
 
-Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|emukit|, we get evaluations at equidistant time steps $t\in \{k/n\vert k=1\ldots n\}$ corresponding to parameters $\theta_k = \text{Exp}_{\theta^\ast}(v\cdot k/n)$. 
-
-The acquisition function is then extended to include the sum of the acquisition function evaluated at each point $v\cdot k/n$.
-In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the rank-2 Laplace approximation is plotted, with their corresponding traces. 
-
-Finally, in figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for UFA is plotted with the corresponding 95\% band for the mean and for the observations. 
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=1\linewidth]{report/figures/UFA_BQ_integrand_2d.png}
-    \caption{Bayesian Quadrature}
-    \label{fig:UFA_BQ_integrand_vals_2d}
-\end{figure}
+In figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for the function approximator is plotted with the corresponding 95\% band for the mean and for the observations. 
 
 
-    

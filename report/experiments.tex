@@ -1,36 +1,38 @@
 \section{Experiments}
-We test the Bayesian Quadrature Riemannian Laplace approximation using a small toy classification data set and the UCI Wine data set. The toy dataset consist of a single input dimension, and three classes as seen in figure \ref{fig:synth_data}, where the samples from the three classes are represented by dots, and the underlying true probabilities are represented by the three coloured lines. 
+We test the Bayesian Quadrature Riemannian Laplace approximation using a small toy classification data set and the UCI Wine data set\cite{wine_quality_186}. 
 
-For both experiments, we compare the Bayesian Quadrature with the normal Riemannian Laplace approximation, a vanilla Laplace approximation and the MAP solution. 
+In both experiments, we compare the Bayesian Quadrature with the normal Riemannian Laplace approximation, a vanilla Laplace approximation and the MAP solution. 
 
-For the Bayesian Quadrature model, the predictive distribution is approximated by taking Monte Carlo sampling where we take $1000$ parameter samples from the quadrature approximation and calculate mean and prediction intervals from this.
+In the Bayesian Quadrature model, the predictive distribution is approximated by Monte Carlo sampling where we take $1000$ parameter samples from the quadrature approximation and calculate mean and prediction intervals from this. The Riemannian Laplace model predictions are calculated as the mean of the model output, given each of the parameter samples. The vanilla Laplace model predictions are calculated using $1000$ samples from the Laplace parameter distribution. 
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
-    \subfloat[Integrand values]{
+    \subfloat[Synthetic data classification task: samples and probabilities]{
         \includegraphics[width=.31\linewidth]{report/figures/data.png}
         \label{fig:synth_data}
     }
     \hfill
-    \subfloat[Integrand values and measure]{
-        \includegraphics[width=.31\linewidth]{report/figures/data.png}
-        \label{fig:meh}
+    \subfloat[BQ-Riemann: Log likelihood as function of number of samples in the UCI-wine experiment]{
+        \includegraphics[width=.31\linewidth]{report/figures/BQ_Riemann_LogLikelihood_samples.png}
+        \label{fig:BQ_Riemann_LogLikelihood_samples}
     }
     \hfill
-    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for UFA]{
+    \subfloat[]{
         \includegraphics[width=.31\linewidth]{report/figures/data.png}
         \label{fig:meh}
     }
-    \caption{Synth data experiment}
+    \caption{Synthetic data classification experiment}
     \label{fig:}
 \end{figure}
 
-The results from the UCI Wine data set experiment can be seen in table \ref{tab:UCI_wine_table1}. For comparison, the MAP log likelihood is $-0.1330$. Thus, it is clear that both the BQ-Riemann and the Riemann approximation have slightly higher likelihood than the MAP estimate. However, it is also clear that the BQ-Riemann approximation deteriorate quickly as the subspace rank increases. 
+\subsection{UCI wine classification}
+The model used for the UCI wine classification is an MLP that takes 13 inputs variables, has two hidden layers with each 26 neuron connected by a ReLU activation function, and a softmax activation function at the output.
 
-
+The experiment was run with subspace ranks $[1, 2, 4, 8, 16, 32, 64, 128, \text{full rank}]$, and 64 samples were used for the Riemannian LA and the BQ-Riemann models. The resulting log-likelihood can be seen in table \ref{tab:UCI_wine_table1}. For comparison, the MAP log-likelihood is $-0.1330$. Thus, it is clear that both the BQ-Riemann and the Riemann approximation have slightly higher likelihood than the MAP estimate. However, it is also clear that the BQ-Riemann approximation deteriorate quickly as the subspace rank increases. This is probably due to the low number of samples used in the BQ-Riemann approximation, compared to the dimensionality of the sampling space. As can be seen in figure \ref{fig:BQ_Riemann_LogLikelihood_samples}, the log likelihood of the test data converges within two samples for the rank-1 approximation, and within around 20 samples for the rank-2 approximation. However the approximations with higher rank sampling space never reaches saturation, and for rank 32, 64, and 128, the models yields very low likelihood. The takeaway is clearly that \emph{many} samples are necessary for high dimension Bayesian Quadrature. On the other hand, the 1- and 2-dimensional BQ models yields reasonably fast and good quality predictions.
 
 \begin{table}[H]
 \caption{UCI Wine LogLikelihood}
+\label{tab:UCI_wine_table1}
 \centering
 \begin{tabular}{lrrr}
 \toprule
@@ -48,3 +50,6 @@ Full rank & NaN & -1.0592 & -0.2349 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Synthetic classification problem}
+The toy dataset consist of a single input dimension, and three classes as seen in figure \ref{fig:synth_data}, where the samples from the three classes are represented by dots, and the corresponding  underlying true probabilities are represented by the three coloured lines. The classification model is an MLP with two hidden layers with each 50 neurons. 
