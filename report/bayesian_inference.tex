@@ -1,5 +1,5 @@
 \section{Bayesian Inference}
-In predictive machine learning, we train a model that makes a prediction $y$, given some input $x$. If the model is a neural network, the most common approach is to train a model that makes a point estimate for $y$. For many purposes, it is however useful to get some estimate of how sure the model is about the prediction. This can for example be important when there are few training observation, or if we want to know how well out-of-distribution (OOD) samples are predicted. \hl{REFERENCE to OOD here}
+In predictive machine learning, we train a model that makes a prediction $y$, given some input $x$. If the model is a neural network, the most common approach is to train a model that makes a point estimate for $y$. For many purposes, it is however useful to get some estimate of how sure the model is about the prediction. This can for example be important when there are few training observation, or if we want to know how well out-of-distribution (OOD) samples are predicted.
 
 One approach to this is through Bayesian methods. Assume that the model is parameterized by $\theta\in \Theta = \mathbb R^d$ and that the data set is denoted $\mathcal{D} = \bm t \vert \bm x$.
 Then Bayes rule gives us the \emph{posterior} distribution of the parameters, given the model architecture and the data that we have already seen:
@@ -12,8 +12,7 @@ Here the \emph{prior} distribution of the parameters $p(\theta\vert \mathcal{D} 
 $$p(\mathcal{D}) = \int p(\mathcal{D} \vert \theta) p(\theta) d\theta, 
 $$
 which is not analytically solvable. %If the parameter space is high dimensional, it furthermore becomes untractable to integrate this using numerical methods. 
-For this reason, a range of approximative methods, such as Montoe-Carlo methods, Laplace approximation, Variational Inference and other methods. \hl{Put in references here}.
-This paper discusses a combination of Laplace approximation, Riemannian Laplace approximation, and Bayesian Quadrature methods. 
+For this reason, a range of approximative methods has been proposed, such as Montoe-Carlo methods, Laplace approximation, Variational Inference and others. This paper discusses a combination of Laplace approximation, Riemannian Laplace approximation, and Bayesian Quadrature methods. 
 
 Assuming for a moment that the above hurdle is overcome, and that we want to estimate the predicted distribution of the target $t^\ast$ given a new input $x^\ast$, we can then integrate over the parameter distribution to get the \emph{posterior predictive}:
 \begin{equation}
@@ -25,9 +24,9 @@ Throughout the paper, two examples will be used. The first is the \emph{banana} 
 $$
 p(x,y) = \frac{1}{2\pi \sigma_x \sigma_y} \exp\left(-\frac{1}{2}(x/\sigma_x)^2 + (y-c\cdot x^2)/\sigma_y\right)
 $$
-where $c$ is a curvature constant.
+where $c$ is a curvature constant that controls the squeeziness.
 
-The second example is a regression problem using a small neural network as a function approximator (FA) \cite{HORNIK1989359, UFA}. The model takes a one-dimensional input and output, has two hidden layers of each 10 neurons, and uses ReLU activation function. The network has been randomly initialized, 50 training data samples has been generated with observation noise $\sigma_t=0.05$ and finally, the model has been fine-tuned to fit to the sampled data (to guarantee that the parameters actually reflects a minimum in the loss landscape). What we want to see here is a model that is certain about the mean value in the areas where there are data points, but expresses higher uncertainty in the interval $[-0.5, 0.5]$ where there is no data present.
+The second example is a regression problem using a small neural network as a function approximator. The model takes a one-dimensional input and output, has two hidden layers of each 10 neurons, and uses ReLU activation function. The network has been randomly initialized, 50 training data samples has been generated with observation noise $\sigma_t=0.05$ and finally, the model has been fine-tuned to fit to the sampled data (to guarantee that the parameters actually reflects a minimum in the loss landscape with respect to the training data). What we want to see here is a model that is certain about the mean value in the areas where there are data points, but expresses higher uncertainty in the interval $[-0.5, 0.5]$ where there is no data present.
 
 \begin{figure}[h]
     \centering
@@ -40,6 +39,6 @@ The second example is a regression problem using a small neural network as a fun
         \includegraphics[width=.45\linewidth]{report/figures/post_trained_function.png}
         \label{fig:post_trained_function}
     }
-    \caption{Examples}
+    \caption{Examples used in this paper}
     \label{fig:examples_figs}
 \end{figure}

@@ -6,11 +6,9 @@ The Bayesian Quadrature model is implemented with \verb|emukit| \cite{emukit2019
 
 The differential equations for the Riemannian metric are solved with \verb|torchdiff| \cite{Chen_torchdiffeq_2021}. For the Bayesian Quadrature experiments, 7 time steps have been used, while the Riemannian Laplace experiments have used 10 time steps.    
 
-Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|torchdiff|, we get evaluations at equidistant time steps $t\in \{k/n\vert k=1\ldots n\}$ corresponding to parameters $\theta_k = \text{Exp}_{\theta^\ast}(v\cdot k/n)$. The acquisition function in the quadrature model is then extended to include the sum of the acquisition function evaluated at each point $v\cdot k/n$. This is useful in the Bayesian Quadrature model, where each model evaluation thus can be used in approximating the integral.
+Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|torchdiff|, we get evaluations at equidistant time steps $t\in \{k/n\vert k=1\ldots n\}$ corresponding to parameters $\theta_k = \text{Exp}_{\theta^\ast}(v\cdot k/n)$. The acquisition function in the quadrature model is then extended to include the sum of the acquisition function evaluated at each point $v\cdot k/n$. This is useful in the Bayesian Quadrature model, where each model evaluation thus can be used in approximating the integral. The idea here is that the samples will lie on the same path, that tends to lie close to the ridge induced by the most important eigenvectors. See figure \ref{fig:banana_Riemann_1d_subspace_samples} for an intuition of the idea.
 
-\hl{ADD plot of 1d samples in a  2d space}
-
-In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the rank-2 Laplace approximation is plotted, with their corresponding traces. 
+In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the rank-2 Laplace approximation is plotted, with their corresponding traces. The intuition is that the model aims to approximate the BQ Model mean in the lower left panel
 
 \begin{figure}[H]
     \centering
