@@ -140,7 +140,6 @@ plt.show()
 
 _, function_values_eval, weights_eval, posterior_samples_eval = integrator(sampler=laplace, model_func=make_functional_fwd_xs(model), xs=xs)
 
-
 err = (function_values_eval[:,:, :]-ys).pow(2).sum(dim=[1,2])
 log_prob = -err/(2 * tensify(target_sigma)**2) - ys.shape[0] * .5 * tensify(target_sigma) * torch.log(torch.tensor(2 * torch.pi)) 
 val, ind = laplace.eps[:, 0].sort()

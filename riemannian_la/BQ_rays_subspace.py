@@ -453,11 +453,12 @@ class BayesianQuadrature_rays():
             ax.set_ylim(self.theta_space_plot_limits[1])
 
 
-    def plot_model_likelihood_2d(self, ax=None):
+    def plot_model_likelihood_2d(self, ax=None, function_vals = True):
         self.plot_init_2d()
         self.get_funcvals()
         ax.contourf(self.xs_plt, self.ys_plt, (-self.plt_model_loss*2).exp().detach(), cmap="viridis")
-        ax.contour(self.xs_plt, self.ys_plt, self.function_vals.detach(), cmap="Grays")
+        if function_vals:
+            ax.contour(self.xs_plt, self.ys_plt, self.function_vals.detach(), cmap="Grays")
         
         ax.scatter(self.thetas[:,0] - self.Rsampler.mean[0].detach().numpy(), self.thetas[:,1] - self.Rsampler.mean[1].detach().numpy(), c="k", marker="x")
 
@@ -574,7 +575,7 @@ class BayesianQuadrature_rays():
 
 
         elif self.Rsampler.num_params == 2 and self.sampling_dims == 1: # This is the case where we have 2d parameters and 1d subspace
-            fig, axes = plt.subplots(1,3, figsize=(15,5))
+            fig, axes = plt.subplots(1,4, figsize=(15,5))
             self.plot_integrand_1d(ax=axes[0])
             self.plot_integrand_measure_1d(ax=axes[1])
             self.plot_true_function_likelihood_2d(ax=axes[2])

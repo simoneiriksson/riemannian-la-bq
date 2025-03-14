@@ -86,9 +86,9 @@ xs_test, ys_test = xs_test.to(device), ys_test.to(device)
 xs_train, ys_train = train_loader.dataset.dataset.tensors
 xs_train, ys_train = xs_train.to(device), ys_train.to(device)
 
-k=8
+k=6
 subspace_ranks = [2**i for i in range(k)] + [None]
-max_BQ_riemann_samples = 64
+max_BQ_riemann_samples = 100
 evals = []
 
 # ####################################
@@ -144,7 +144,7 @@ for subspace_rank in subspace_ranks:
     logger_info(f"\n\nDoing Riemannian Laplace approximation with subspace rank: {subspace_rank}")
     for i in range(max_BQ_riemann_samples):
         logger_info(f"\nSampling {i}")
-        _=R_sampler.make_posterior_sample(n_samples=1)
+        _=R_sampler.make_posterior_sample(n_samples=10)
         integral_riemann, function_values_riemann, weights, posterior_samples = integrator(R_sampler, model_func=make_functional_fwd_xs(model), xs=xs_test, output_func=output_func)
         means_riemann = integral_riemann.detach()
         epistemic_var = (function_values_riemann[:,:, :]-means_riemann).pow(2).mean(dim=0).detach()
@@ -169,7 +169,8 @@ for subspace_rank in subspace_ranks:
                                 theta_space_plot_limits=[[-1,1], [-1,1]], xs = xs_train[0], parametersubset=None, output_func=identity_func, device=device)
     #max_BQ_riemann_samples_ = min(max_BQ_riemann_samples_, 3**subspace_rank-1)
     for i in range(max_BQ_riemann_samples):
-        integral_mean, integral_variance = BQ.step()
+        for k in range(10):
+            integral_mean, integral_variance = BQ.step()
         logger_info(f"\n{i = }, samples = {BQ.emukit_method.X.shape[0]}, {integral_mean = }, {integral_variance = }")
 
         test_output_func = output_func
