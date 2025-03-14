@@ -33,7 +33,6 @@ The Exp-map corresponds to solving the initial value problem for the differentia
 \end{equation}
 It then holds that $\text{Exp}_{\theta_0}(\text{Log}_{\theta_0}(v)) = v.$
 Note however that the Log-map is not uniquely defined, so the reverse does not necessarily hold. Furthermore, it holds that if $c^\ast$ is the geodesic between $\theta_0$ and $\theta_1$, and $v=\text{Log}_{\theta_0}(\theta_1)$, then for any $t \in [0,1]$ it also holds that $c^\ast(t\cdot v) = \text{Exp}_{\theta_0}(t\cdot v)$.
-In this paper, all IVP's are solved numerically using the \verb|emukit| package \cite{emukit2023}.
 
 \begin{figure}[ht]
     \centering
@@ -47,13 +46,13 @@ In this paper, all IVP's are solved numerically using the \verb|emukit| package 
         \label{fig:banana_distr_contour_riemannshots}
     }
     \hfill
-    \subfloat[Riemannian Laplace approximation for UFA]{
+    \subfloat[Riemannian Laplace approximation for the function approximator]{
         \includegraphics[width=.31\linewidth]{report/figures/UFA_riemannian_subspace_rank2.png}
         \label{fig:UFA_riemannian_subspace_rank1}
     }
-    \caption{Riemannian Laplace approximations}
+    \caption{Riemannian Laplace approximation}
     \label{fig:riemannian_laplaceapprox}
 \end{figure}
 
-In figure \ref{fig:banana_distr_contour_laplace}, 50 samples from the Laplace approximation together with corresponding red isocurves for the Laplace density are overlayed the Banana distribution. The Exp-map of the same samples are seen in figure \ref{fig:banana_distr_contour_riemannshots} together with their corresponding geodesics. In figure \ref{fig:UFA_riemannian_subspace_rank1}, we see the resulting UFA with prediction bands, as given by 10 samples along the first eigendirection of the Riemmanian Laplace approximation.
+In figure \ref{fig:banana_distr_contour_laplace}, 50 samples from the Laplace approximation together with corresponding red isocurves for the Laplace density are overlayed the Banana distribution. The Exp-map of the same samples are seen in figure \ref{fig:banana_distr_contour_riemannshots} together with their corresponding geodesics. In figure \ref{fig:UFA_riemannian_subspace_rank1}, we see the resulting function approximator with prediction bands, as given by 10 samples along the first eigendirection of the Riemmanian Laplace approximation.
 

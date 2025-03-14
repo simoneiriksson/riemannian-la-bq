@@ -1,0 +1,22 @@
+\section{Implementation}
+The Laplace approximation has been implemented in \verb|Pytorch| \cite{pytorch2} using Generalized Gauss-Newton approximation as discussed in \cite{dauphin2024neglectedhessiancomponentexplains, ksnxr_ggn} for convex loss functions, and with exact Hessian for the example with the banana distribution, which has been implemented with a loss that is linear in the model parameters.
+
+
+The Bayesian Quadrature model is implemented with \verb|emukit| \cite{emukit2019, emukit2023}, and uses \verb|GPy| \cite{gpy2014} for the Gaussian Process modelling. All GP models in this paper uses the \verb|GPy| Gaussian Process model for regression based on a Gaussian Kernel and has length-scale 1 and variance 1.
+
+The differential equations for the Riemannian metric are solved with \verb|torchdiff| \cite{Chen_torchdiffeq_2021}. For the Bayesian Quadrature experiments, 7 time steps have been used, while the Riemannian Laplace experiments have used 10 time steps.    
+
+Like \cite{fröhlich2021bayesianquadratureriemanniandata}, we exploit the fact that the solution of the IVP is done through discrete steps, where the function value (the model output) is evaluated at each step. Using \verb|torchdiff|, we get evaluations at equidistant time steps $t\in \{k/n\vert k=1\ldots n\}$ corresponding to parameters $\theta_k = \text{Exp}_{\theta^\ast}(v\cdot k/n)$. The acquisition function in the quadrature model is then extended to include the sum of the acquisition function evaluated at each point $v\cdot k/n$. This is useful in the Bayesian Quadrature model, where each model evaluation thus can be used in approximating the integral.
+
+\hl{ADD plot of 1d samples in a  2d space}
+
+In figure \ref{fig:UFA_BQ_integrand_vals_2d}, the result of 8 samples from the rank-2 Laplace approximation is plotted, with their corresponding traces. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{report/figures/UFA_BQ_integrand_2d.png}
+    \caption{Bayesian Quadrature. All figures represents model evaluations in one data point. Clockwise from upper left: The integrand values are the model evaluations, given the rays of the $v$'s. Here, 9 different values of $v$ has been explored and their corresponding ray traces can be seen. The second panel show the model evaluations multiplied by the integration measure - which is a standard normal normal distribution. The acquisition function in the third panel returns the expected variance reduction in the integral of the Gaussian Process, given that we evaluate our model in the specific point. The fourth panel shows the expected value of the underlying GP, whereas the fifth shows the underlying GP multiplied by the integration measure. The last panel shows the variance of the expected value of the underlying GP}
+    \label{fig:UFA_BQ_integrand_vals_2d}
+\end{figure}
+
+
