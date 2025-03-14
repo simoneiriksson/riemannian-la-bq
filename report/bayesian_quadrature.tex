@@ -16,10 +16,6 @@ Briefly speaking, the assumption is that the function we want to integrate is dr
         \label{fig:UFA_BQ_integrand_vals_measure_1d}
     }
     \hfill
-    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for the function approximator]{
-        \includegraphics[width=.31\linewidth]{report/figures/UFA_riemannian_BQ_subspace_rank2.png}
-        \label{fig:UFA_BQ_variance}
-    }
     \caption{Bayesian Quadrature approximation}
     \label{fig:bayesian_quadrature1}
 \end{figure}
@@ -48,4 +44,19 @@ Since $q_v(v)$ is Gaussian, we can use this as measure for the Bayesian Quadratu
 
 In figure \ref{fig:UFA_BQ_variance}, the Bayesian Quadrature Riemannian Laplace approximation for the function approximator is plotted with the corresponding 95\% band for the mean and for the observations. 
 
+\begin{figure}[h]
+    \centering
+        \subfloat[Riemannian Laplace approximation for the function approximator]{
+        \label{fig:UFA_riemannian_subspace_rank1}
+        \includegraphics[width=.45\linewidth]{report/figures/UFA_riemannian_subspace_rank2.png}
+    }
+    \hfill
+    \subfloat[Bayesian Quadrature Riemannian Laplace approximation for the function approximator]{
+        \includegraphics[width=.45\linewidth]{report/figures/UFA_riemannian_BQ_subspace_rank2.png}
+        \label{fig:UFA_BQ_variance}
+    }
+    \caption{Function approximator}
+
+    \label{fig:bayesian_quadrature2}
+\end{figure}
 

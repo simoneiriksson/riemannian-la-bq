@@ -12,7 +12,7 @@ Here the \emph{prior} distribution of the parameters $p(\theta\vert \mathcal{D} 
 $$p(\mathcal{D}) = \int p(\mathcal{D} \vert \theta) p(\theta) d\theta, 
 $$
 which is not analytically solvable. %If the parameter space is high dimensional, it furthermore becomes untractable to integrate this using numerical methods. 
-For this reason, a range of approximative methods has been proposed, such as Montoe-Carlo methods, Laplace approximation, Variational Inference and others. This paper discusses a combination of Laplace approximation, Riemannian Laplace approximation, and Bayesian Quadrature methods. 
+For this reason, a range of approximative methods has been proposed, such as Monte-Carlo methods, Laplace approximation, Variational Inference and others. This paper discusses a combination of Laplace approximation, Riemannian Laplace approximation, and Bayesian Quadrature methods. 
 
 Assuming for a moment that the above hurdle is overcome, and that we want to estimate the predicted distribution of the target $t^\ast$ given a new input $x^\ast$, we can then integrate over the parameter distribution to get the \emph{posterior predictive}:
 \begin{equation}

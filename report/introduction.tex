@@ -1,3 +1,10 @@
 \section{Introduction}
 This paper presents a method for uncertainty estimation in machine learning models, exploiting the curvature of the loss function and Bayesian Quadrature, to make efficient parameter samples from the posterior distribution.
 
+First we present the Vanilla Laplace approximation, that approximate the posterior distribution by a normal distribution with the same mean and covariance. This approximation does not work well when used on high dimensional models, since the posterior distribution tends to be more non-gaussian with increasing dimensionality. 
+The idea with the Riemannian Laplace approximation is to exploit the knowledge we have of the loss surface. By introducing a Riemannian metric on the parameter space, we can "guide" the Laplace samples away from areas with low likelihood. The computation of Riemannian Laplace samples is however highly computationally expensive. 
+
+This lead to this papers contribution: The Riemannian Laplace approximation induces a distribution over the parameter space, that we want to sample from, in order to get samples from the predictive posterior. Assuming that the predictive posterior distribution is drawn from a Gaussian process, we can use samples from the Riemannian Laplace approximation to get data points to condition the Gaussian process. Having a conditional Gaussian process allows us to use Bayesian Quadrature to estimate the predictive posterior distribution.
+
+Furthermore, by sampling only from a subspace of the full parameter space, the Gaussian process can be restricted to a corresponding subspace. This allows us to integrate the predictive posterior using only a limited number of samples from the Riemannian Laplace approximation.
+ 
