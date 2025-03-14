@@ -5,30 +5,31 @@ In both experiments, we compare the Bayesian Quadrature with the normal Riemanni
 
 In the Bayesian Quadrature model, the predictive distribution is approximated by Monte Carlo sampling where we take $1000$ parameter samples from the quadrature approximation and calculate mean and prediction intervals from this. The Riemannian Laplace model predictions are calculated as the mean of the model output, given each of the parameter samples. The vanilla Laplace model predictions are calculated using $1000$ samples from the Laplace parameter distribution. 
 
+
+\subsection{UCI wine classification}
+The model used for the UCI wine classification is an MLP that takes 13 inputs variables, has two hidden layers with each 26 neuron connected by a ReLU activation function, and a softmax activation function at the output.
+
+The experiment was run with subspace ranks $[1, 2, 4, 8, 16, 32, 64, 128, \text{full rank}]$, and 64 samples were used for the Riemannian LA and the BQ-Riemann models. The resulting log-likelihood can be seen in table \ref{tab:UCI_wine_table1}. For comparison, the MAP log-likelihood is $-0.1330$. Thus, it is clear that both the BQ-Riemann and the Riemann approximation have slightly higher likelihood than the MAP estimate. However, it is also clear that the BQ-Riemann approximation deteriorate quickly as the subspace rank increases. This is probably due to the low number of samples used in the BQ-Riemann approximation, compared to the dimensionality of the sampling space. As can be seen in figure \ref{fig:BQ_Riemann_LogLikelihood_samples}, the log likelihood of the test data converges within two samples for the rank-1 approximation, and within around 20 samples for the rank-2 approximation. However the approximations with higher rank sampling space never reaches saturation, and for rank 32, 64, and 128, the models yields very low likelihood. The takeaway is clearly that \emph{many} samples are necessary for high dimension Bayesian Quadrature. On the other hand, the 1- and 2-dimensional BQ models yields reasonably fast and good quality predictions.
 \begin{figure}[H]
     \centering
-    \subfloat[Synthetic data classification task: samples and probabilities]{
-        \includegraphics[width=.31\linewidth]{report/figures/data.png}
-        \label{fig:synth_data}
+    \subfloat[]{
+        \includegraphics[width=.31\linewidth]{}
+        \label{}
     }
     \hfill
     \subfloat[BQ-Riemann: Log likelihood as function of number of samples in the UCI-wine experiment]{
-        \includegraphics[width=.31\linewidth]{report/figures/BQ_Riemann_LogLikelihood_samples.png}
+        \includegraphics[width=.31\linewidth]{report/figures/BQ_Riemann_LogLikelihood_samples_experiment1.png}
         \label{fig:BQ_Riemann_LogLikelihood_samples}
     }
     \hfill
-    \subfloat[]{
-        \includegraphics[width=.31\linewidth]{report/figures/data.png}
+    \subfloat[Riemannian-LA: Log likelihood as function of number of samples in the UCI-wine experiment]{
+        \includegraphics[width=.31\linewidth]{report/figures/Riemann_LogLikelihood_samples_experiment1.png}
         \label{fig:meh}
     }
     \caption{Synthetic data classification experiment}
     \label{fig:}
 \end{figure}
 
-\subsection{UCI wine classification}
-The model used for the UCI wine classification is an MLP that takes 13 inputs variables, has two hidden layers with each 26 neuron connected by a ReLU activation function, and a softmax activation function at the output.
-
-The experiment was run with subspace ranks $[1, 2, 4, 8, 16, 32, 64, 128, \text{full rank}]$, and 64 samples were used for the Riemannian LA and the BQ-Riemann models. The resulting log-likelihood can be seen in table \ref{tab:UCI_wine_table1}. For comparison, the MAP log-likelihood is $-0.1330$. Thus, it is clear that both the BQ-Riemann and the Riemann approximation have slightly higher likelihood than the MAP estimate. However, it is also clear that the BQ-Riemann approximation deteriorate quickly as the subspace rank increases. This is probably due to the low number of samples used in the BQ-Riemann approximation, compared to the dimensionality of the sampling space. As can be seen in figure \ref{fig:BQ_Riemann_LogLikelihood_samples}, the log likelihood of the test data converges within two samples for the rank-1 approximation, and within around 20 samples for the rank-2 approximation. However the approximations with higher rank sampling space never reaches saturation, and for rank 32, 64, and 128, the models yields very low likelihood. The takeaway is clearly that \emph{many} samples are necessary for high dimension Bayesian Quadrature. On the other hand, the 1- and 2-dimensional BQ models yields reasonably fast and good quality predictions.
 
 \begin{table}[H]
 \caption{UCI Wine LogLikelihood}
@@ -52,4 +53,44 @@ Full rank & NaN & -1.0592 & -0.2349 \\
 \end{table}
 
 \subsection{Synthetic classification problem}
-The toy dataset consist of a single input dimension, and three classes as seen in figure \ref{fig:synth_data}, where the samples from the three classes are represented by dots, and the corresponding  underlying true probabilities are represented by the three coloured lines. The classification model is an MLP with two hidden layers with each 50 neurons. 
+The toy dataset consists of a single input dimension, and three classes as seen in figure \ref{fig:synth_data}, where the samples from the three classes are represented by dots, and the corresponding  underlying true probabilities are represented by the three coloured lines. The classification model is an MLP with two hidden layers with 50 neurons each. 
+
+The experiment was run with subspace ranks $[1, 2, 4, 8, 16, \text{full rank}]$, and 128 samples were used for the Riemannian LA and the BQ-Riemann models. The resulting log-likelihood can be seen in table \ref{tab:synth_table1}. For comparison, the MAP log-likelihood is $-0.8961$.
+
+\begin{table}[H]
+\caption{Synthetic data classification LogLikelihood}
+\label{tab:synth_table1}
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Subspace rank & BQ-Riemann & Laplace & Riemann \\
+\midrule
+1 & -0.8973 & -0.9085 & -0.8975 \\
+2 & -0.8943 & -0.8893 & -0.8941 \\
+4 & -0.8976 & -0.8922 & -0.8968 \\
+8 & -0.9518 & -0.9338 & -0.9013 \\
+16 & -1.0800 & -1.0081 & -0.9049 \\
+Full rank & NaN & -1.1074 & -0.8695 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \subfloat[Synthetic data classification task: samples and probabilities]{
+        \includegraphics[width=.31\linewidth]{report/figures/data.png}
+        \label{fig:synth_data}
+    }
+    \hfill
+    \subfloat[BQ-Riemann: Log likelihood as function of number of samples in the UCI-wine experiment]{
+        \includegraphics[width=.31\linewidth]{report/figures/BQ-Riemann_LogLikelihood_samples_experiment2.png}
+        \label{fig:BQ_Riemann_LogLikelihood_samples}
+    }
+    \hfill
+    \subfloat[Riemannian-LA: Log likelihood as function of number of samples in the UCI-wine experiment]{
+        \includegraphics[width=.31\linewidth]{report/figures/Riemann_LogLikelihood_samples_experiment2.png}
+        \label{fig:meh}
+    }
+    \caption{Synthetic data classification experiment}
+    \label{fig:}
+\end{figure}
