@@ -388,7 +388,7 @@ class BayesianQuadrature_rays():
 
     def plot_integrand_2d(self, ax=None):
         # plot integrand values
-        ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c=self.integrand_values, cmap="viridis")
+        ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c=self.integrand_values, cmap="Wistia")
         ax.set_title("Integrand values")
         ax.set_xlim(-self.plot_limits[0], self.plot_limits[0])
         ax.set_ylim(-self.plot_limits[1], self.plot_limits[1])
@@ -396,7 +396,7 @@ class BayesianQuadrature_rays():
     def plot_integrand_measure_2d(self, ax=None):
         ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], 
                     c=self.integrand_values[:,0] * self.plt_measure_dist.log_prob(torch.tensor(self.vs_ray)).exp().detach().numpy(), 
-                    cmap="viridis")
+                    cmap="Wistia")
         ax.set_title("Integrand values times measure")
         ax.set_xlim(-self.plot_limits[0], self.plot_limits[0])
         ax.set_ylim(-self.plot_limits[1], self.plot_limits[1])
@@ -404,7 +404,7 @@ class BayesianQuadrature_rays():
     def plt_BQ_mean_2d(self, ax=None):
         self.plot_init_2d()
         mu_plot, var_plot = self.emukit_method.predict(self.xys_plt)
-        ax.contourf(self.xs_plt, self.ys_plt, mu_plot.reshape(self.plot_N_mesh, self.plot_N_mesh).T, cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, mu_plot.reshape(self.plot_N_mesh, self.plot_N_mesh).T, cmap="Wistia")
         ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c="k", marker="x")
         ax.set_title("BQ Model mean")
         ax.set_xlim(-self.plot_limits[0], self.plot_limits[0])
@@ -413,29 +413,29 @@ class BayesianQuadrature_rays():
     def plot_BQ_mean_measure_2d(self, ax=None):
         self.plot_init_2d()
         mu_plot, var_plot = self.emukit_method.predict(self.xys_plt)
-        ax.contourf(self.xs_plt, self.ys_plt, mu_plot.reshape(self.plot_N_mesh,self.plot_N_mesh).T * self.plt_measure_dist.log_prob(torch.tensor(self.xys_plt.reshape(self.plot_N_mesh, self.plot_N_mesh, -1))).exp().detach().numpy(), cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, mu_plot.reshape(self.plot_N_mesh,self.plot_N_mesh).T * self.plt_measure_dist.log_prob(torch.tensor(self.xys_plt.reshape(self.plot_N_mesh, self.plot_N_mesh, -1))).exp().detach().numpy(), cmap="Wistia")
         ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c="k", marker="x")
         ax.set_title("BQ Model mean times measure")
 
     def plot_BQ_std_2d(self, ax=None):
         self.plot_init_2d()
         mu_plot, var_plot = self.emukit_method.predict(self.xys_plt)
-        ax.contourf(self.xs_plt, self.ys_plt, np.sqrt(var_plot).reshape(self.plot_N_mesh,self.plot_N_mesh).T, cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, np.sqrt(var_plot).reshape(self.plot_N_mesh,self.plot_N_mesh).T, cmap="Wistia")
         ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c="k", marker="x")
-        #axes[3].scatter(xys_plt[:,0], xys_plt[:,1], c=np.sqrt(var_plot), cmap="viridis")
+        #axes[3].scatter(xys_plt[:,0], xys_plt[:,1], c=np.sqrt(var_plot), cmap="Wistia")
         ax.set_title("BQ Model std")
 
     def plot_acquisition_2d(self, ax=None):
         self.plot_init_2d()
         squared_correlation, integral_current_var, y_predictive_var, predictive_cov = self.ivr_acquisition._evaluate(self.xys_plt)
-        ax.contourf(self.xs_plt, self.ys_plt, np.sqrt(squared_correlation).reshape(self.plot_N_mesh,self.plot_N_mesh).T, cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, np.sqrt(squared_correlation).reshape(self.plot_N_mesh,self.plot_N_mesh).T, cmap="Wistia")
         ax.scatter(self.vs_ray[:,0], self.vs_ray[:,1], c="k", marker="x")
         ax.set_title("Acquisition function")
 
     def plot_true_function_likelihood_2d(self, ax=None):
         self.plot_init_2d()
         self.get_funcvals()
-        ax.contourf(self.xs_plt, self.ys_plt, self.function_times_likelihood.detach(), cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, self.function_times_likelihood.detach(), cmap="Wistia")
         ax.scatter(self.thetas[:,0] - self.Rsampler.mean[0].detach().numpy(), self.thetas[:,1] - self.Rsampler.mean[1].detach().numpy(), c="k", marker="x")
         
         rays = self.thetas[1:].reshape(-1, self.num_timesteps-1, 2).permute(0, 2, 1)
@@ -456,7 +456,7 @@ class BayesianQuadrature_rays():
     def plot_model_likelihood_2d(self, ax=None, function_vals = True):
         self.plot_init_2d()
         self.get_funcvals()
-        ax.contourf(self.xs_plt, self.ys_plt, (-self.plt_model_loss*2).exp().detach(), cmap="viridis")
+        ax.contourf(self.xs_plt, self.ys_plt, (-self.plt_model_loss*2).exp().detach(), cmap="Wistia")
         if function_vals:
             ax.contour(self.xs_plt, self.ys_plt, self.function_vals.detach(), cmap="Grays")
         

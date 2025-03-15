@@ -196,7 +196,7 @@ plt.fill_between(xs_plt[:,0], means - np.sqrt(epistemic_var), means + np.sqrt(ep
 plt.plot(xs_plt[:, 0].detach(), ys_plt_trained, c="r", label="true function")
 plt.scatter(xs[:, 0].detach(), ys.detach(), c="b", marker=".", label="data")
 plt.legend()
-plt.savefig("riemannian_subspace.png")
+#plt.savefig("riemannian_subspace.png")
 plt.show()
 
 plt.plot(xs_plt, np.sqrt(aleatoric_var + epistemic_var))
@@ -240,7 +240,6 @@ plt.show()
 plt.plot(xs_plt, np.sqrt(aleatoric_var + epistemic_var))
 plt.plot(xs_plt, np.sqrt(epistemic_var))
 plt.show()
-
 
 pred_samples = torch.tensor(BQ.pred_BQ_samples(xs_plt, 1000))
 
