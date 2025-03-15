@@ -1,7 +1,7 @@
 #!/bin/sh 
 ### General options 
 ### -- specify queue -- 
-#BSUB -q gpua100
+#BSUB -q gpuv100
 
 ### -- ask for number of cores (default: 1) -- 
 #BSUB -n 1
@@ -33,6 +33,6 @@
 echo start environment 
 source /zhome/50/8/132685/envs/BNN_env/bin/activate
 echo "Running script..."
-python3 /zhome/50/8/132685/BNN/riemannian-la/riemannian_la/UCI_test.py 
+python3 /zhome/50/8/132685/BNN/riemannian-la/riemannian_la/classification_test_experiment.py 
 
 
