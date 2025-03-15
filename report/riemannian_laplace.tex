@@ -1,18 +1,18 @@
 \section{Riemannian Laplace Approximation}
-In comes the Riemanninan Laplace approximation. The idea here is to use samples from the laplace approximation, but take into account the curvature of the loss landscape, such that parameters which are far away from our MAP solution in terms of the the curvature of the loss landscape get penalized.
+In comes the Riemanninan Laplace approximation. By using samples from the Laplace approximation and taking into account the curvature of the loss landscape parameters which are far away from our MAP solution in terms of the the curvature of the loss landscape get penalized.
 
-For this purpose it is beneficial to define the loss manifold as $\mathcal M = g(\theta) = [\theta, \mathcal L(\theta)]$. Let us then consider a curve $c:[0,1] \mapsto \Theta$ on the parameter space parameterized by $t\in [0,1]$ \footnote{In the literature the curve is on the manifold. The function $g(\theta)$ gives a one-to-one correspondence between $\Theta$ and $\mathcal M$, so we can think of any operation taking place on either of the two, as we like.}. Then if $\dot c(t)$ is the time derivative of the curve, and $\bm J_{c(t)} = \left. \frac{\partial g}{\partial \theta} \right \vert_{\theta = c(t)}$ is the Jacobian of $g$ taken in the point $\theta=c(t)$, following \cite{Hauberg2025} we can write out the length of the curve as 
+We define the loss manifold as $\mathcal M = g(\theta) = [\theta, \mathcal L(\theta)]$ residing in $\mathbb R^{d+1}$ and consider a curve $c:[0,1] \mapsto \Theta$ on the parameter space parameterized by $t\in [0,1]$ \footnote{In the literature the curve is on the manifold. The function $g(\theta)$ gives a one-to-one correspondence between $\Theta$ and $\mathcal M$, so we can think of any operation taking place on either of the two, as we like.}. If then $\dot c(t)$ is the time derivative of the curve, and $\bm J_{c(t)} = \left. \frac{\partial g}{\partial \theta} \right \vert_{\theta = c(t)}$ is the Jacobian of $g$ taken in the point $\theta=c(t)$, following \cite{Hauberg2025} we can write out the length of the curve as 
 \begin{align*}
     \text{Length}_\mathcal M (c) 
-    &= \int_0^1 \left\Vert \frac{d}{dt} g(c(t)) \right\Vert dt\\
+    &\coloneq \int_0^1 \left\Vert \frac{d}{dt} g(c(t)) \right\Vert dt\\
     &= \int_0^1 \left\Vert \bm J_{c(t)} \dot c(t) \right\Vert dt\\
     &= \int_0^1 \sqrt{\dot c(t)^\top  \bm J_{c(t)}^\top \bm J_{c(t)} \dot c(t)} dt.
 \end{align*}
-Here we can use that $\bm J_{c(t)} = [\mathbb I_d, \nabla_\theta \mathcal L(\theta)]$ to define the \emph{Riemannian matric} on $\mathcal M$ as 
+Following \cite{bergamin2023riemannian} we can use that $\bm J_{c(t)} = [\mathbb I_d, \nabla_\theta \mathcal L(\theta)]$ to define the \emph{Riemannian matric} on $\mathcal M$ as 
 \begin{equation}
 M(\theta) = \bm J_{c(t)}^\top \bm J_{c(t)} = \mathbb I_d + \nabla_\theta \mathcal L(\theta) \nabla_\theta \mathcal L(\theta)^\top    \label{eq:riemann_metric}
 \end{equation}
-This notion of distance induces two defintions. 
+This notion of distance induces two definitions. 
 
 First the geodesic, which is the which is a shortest curve between two points $(\theta_0, \theta_1)$ on the manifold: 
 \begin{align}
@@ -20,12 +20,12 @@ First the geodesic, which is the which is a shortest curve between two points $(
     & \,\,\text{subject to } c(0) = \theta_0 \text{ and } c(1) = \theta_1 \label{eq:geodesic}
 \end{align}
 Finding the geodesic between two points corresponds to solving a boundary value problem for a differential equation and is generally computationally expensive. 
-The directional vector at time 0, given by $\dot{c}^\ast_0$ uniquely determines the curve (as we shall shortly see), and this motivates the definition of the Log-map, which takes two points $(\theta_0, \theta_1)$ in parameters space as input and returns a vector in parameter space\footnote{Corresponding to the previous note: the literature defines log Log-map on the manifold and returns a directional vector in $\Theta \times \mathbb R$}:
+The directional vector at time 0, given by $\dot{c}^\ast(0)$ uniquely determines the curve (as we shall shortly see). This motivates the definition of the Log-map, which takes two points $(\theta_0, \theta_1)$ in parameters space as input and returns a vector in parameter space\footnote{Corresponding to the previous note: the literature defines log Log-map on the manifold and returns a directional vector in $\Theta \times \mathbb R$}:
 \begin{equation*}
     \text{Log}_{\theta_0}(\theta_1) \coloneqq \dot{c}^\ast(0)
 \end{equation*}
 The Log-map is thus the initial velocity of the geodesic that starts from $\theta_0$ and reaches $\theta_1$ in one time unit \cite{fröhlich2021bayesianquadratureriemanniandata}.
-The "inverse" of this mapping is the Exp-map, which given a starting point $\theta^\ast$ and a directional vector $v$ returns the point that is reached by moving in direction $v$ from $\theta^\ast$ on the loss manifold for one time unit. That is, if 
+The "inverse" of this mapping is the Exp-map that given a starting point $\theta^\ast$ and a directional vector $v$ returns the point that is reached by moving in direction $v$ from $\theta^\ast$ on the loss manifold for one time unit. That is, if 
 $\text{Exp}_{\theta_0}(v) = c(1)$ then $v = \text{Log}_{\theta_0}(c(1))$.
 The Exp-map corresponds to solving the initial value problem for the differential equation \cite{bergamin2023riemannian}:
 \begin{equation}
@@ -53,5 +53,5 @@ Note however that the Log-map is not uniquely defined, so the reverse does not n
     \label{fig:riemannian_laplaceapprox}
 \end{figure}
 
-In figure \ref{fig:banana_distr_contour_laplace}, 50 samples from the Laplace approximation together with corresponding red isocurves for the Laplace density are overlayed the Banana distribution. The Exp-map of the same samples are seen in figure \ref{fig:banana_distr_contour_riemannshots} together with their corresponding geodesics. In figure \ref{fig:UFA_riemannian_subspace_rank1}, we see the resulting function approximator with prediction bands, as given by 10 samples along the first eigendirection of the Riemmanian Laplace approximation.
+In figure \ref{fig:banana_distr_contour_laplace}, 50 samples from the Laplace approximation together with corresponding red isocurves for the Laplace density are overlayed the Banana distribution. The Exp-map of the same samples are seen in figure \ref{fig:banana_distr_contour_riemannshots} together with their corresponding geodesics. In figure \ref{fig:UFA_riemannian_subspace_rank1}, we see the resulting function approximator with prediction bands, as given by 10 samples along the first eigendirection of the Riemmanian LA.
 
