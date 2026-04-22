@@ -1,6 +1,0 @@
-\section{Conclusion}
-In this paper, we have presented and compared three different approaches to Bayesian uncertainty estimation: Vanilla Laplace approximation, Riemannian Laplace approximation (Riemannian LA), and Bayesian Quadrature Riemannian Laplace approximation (BQ-Riemannian).
-
-It is clear from the experiments that the BQ-Riemann performs on par with the Riemannian LA, as long as the subspace rank of the models is at most 4. This is probably mainly due to the variance induced by the Bayesian Quadrature model with increasing subspace rank. In general, it is fair to conclude that the Bayesian quadrature approach does not scale to high dimensions.
-
-In future work, it may be advised to try out different Gaussian process kernels such as the Matérn kernel as proposed in \cite{fröhlich2021bayesianquadratureriemanniandata}. Furthermore it might be an option to tweak or otherwise optimize the Gaussian process parameters (length-scale and variance), to better suit higher-dimensional models.
