@@ -7,9 +7,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import torch.nn as nn
-from utils import torch_seed
-
-from utils import torch_seed
+from riemannian_la_bq.utils import torch_seed
 
 def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
     def banana(input_2d):

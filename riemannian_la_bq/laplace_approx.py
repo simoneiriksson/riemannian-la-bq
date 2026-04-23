@@ -1,10 +1,10 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
-from utils import loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict
-from GGN_hessian import GGN_hessian_from_loader
-from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
-from utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
+from riemannian_la_bq.utils import loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict
+from riemannian_la_bq.GGN_hessian import GGN_hessian_from_loader
+from riemannian_la_bq.hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
+from riemannian_la_bq.utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 
 

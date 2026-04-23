@@ -1,6 +1,6 @@
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 import torch
-from utils import make_functional_fwd_xs
+from riemannian_la_bq.utils import make_functional_fwd_xs
 
 # This function turns a dictionary of gradients into a single vector
 def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):

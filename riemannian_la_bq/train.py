@@ -2,7 +2,7 @@ import torch
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-from utils import loss_func_from_target_sigma
+from riemannian_la_bq.utils import loss_func_from_target_sigma
 
 def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=None, epochs=1, stop_lr =1e-10,
           prior_sigma=None, prior_logprob=None,

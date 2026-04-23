@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data import Subset
 from torch.distributions import Categorical, MultivariateNormal
 from matplotlib import pyplot as plt
-from utils import torch_seed
+from riemannian_la_bq.utils import torch_seed
 
 from torchvision.datasets import mnist, CIFAR10
 from sklearn.datasets import load_iris, load_wine, load_diabetes

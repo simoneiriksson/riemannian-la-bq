@@ -4,19 +4,19 @@ import sys
 #os.chdir("../riemannian_la")
 # print(os.getcwd())
 from torch.utils.data import DataLoader, TensorDataset
-from models import LinearModel, Model_from_func
-from getdata import gen_log_regression_data
-from train import train
-from laplace_approx import Laplace, vector_to_parameterdict
-from utils import make_functional_fwd, loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, iid_gaussian_prior_loss
-from discrete_sampler import discrete_function_sampler, discrete_model_sampler
-from integration import integrator
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
-from matplotlib import pyplot as plt
-from laplace_approx import Laplace
 import torch
-from models import functional_banana
 import hamiltorch
+from matplotlib import pyplot as plt
+from riemannian_la_bq.models import LinearModel, Model_from_func
+from riemannian_la_bq.getdata import gen_log_regression_data
+from riemannian_la_bq.train import train
+from riemannian_la_bq.laplace_approx import Laplace, vector_to_parameterdict
+from riemannian_la_bq.utils import make_functional_fwd, loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, iid_gaussian_prior_loss
+from riemannian_la_bq.discrete_sampler import discrete_function_sampler, discrete_model_sampler
+from riemannian_la_bq.integration import integrator
+from riemannian_la_bq.laplace_approx import Laplace
+from riemannian_la_bq.models import functional_banana
 
 
 # Now let us make a class that wraps around hamiltorch, that we can use for the project.

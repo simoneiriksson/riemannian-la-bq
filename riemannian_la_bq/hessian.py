@@ -5,7 +5,7 @@ and the hessian of a model at a point
 
 import torch
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
-from utils import functional_loss, make_functional_fwd_xs
+from riemannian_la_bq.utils import functional_loss, make_functional_fwd_xs
 
 def hessian_from_func(func, x):
   """

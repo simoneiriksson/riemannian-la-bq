@@ -4,16 +4,16 @@ import sys
 # set working directory
 # os.chdir("../riemannian_la")
 # print(os.getcwd())
-from models import LinearModel, Model_from_func
-from getdata import gen_log_regression_data
-from train import train
-from laplace_approx import Laplace, vector_to_parameterdict
-from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, identity_func
-from discrete_sampler import discrete_function_sampler, discrete_model_sampler
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 from matplotlib import pyplot as plt
-from laplace_approx import Laplace
 import torch
+from riemannian_la_bq.models import LinearModel, Model_from_func
+from riemannian_la_bq.getdata import gen_log_regression_data
+from riemannian_la_bq.train import train
+from riemannian_la_bq.laplace_approx import Laplace, vector_to_parameterdict
+from riemannian_la_bq.utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, identity_func
+from riemannian_la_bq.discrete_sampler import discrete_function_sampler, discrete_model_sampler
+from riemannian_la_bq.laplace_approx import Laplace
 
 def integrator(sampler=None, model_func=None, parametersubset=None, xs=None, output_func=None):
     # if no output function defined, use identity function

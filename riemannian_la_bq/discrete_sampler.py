@@ -1,5 +1,5 @@
 import torch
-from utils import functional_loss_for_vmap, make_functional_fwd_xs, loss_func_from_target_sigma, iid_gaussian_prior_loss
+from riemannian_la_bq.utils import functional_loss_for_vmap, make_functional_fwd_xs, loss_func_from_target_sigma, iid_gaussian_prior_loss
 from torch.func import vmap
 from torch.utils.data import DataLoader, TensorDataset
 
