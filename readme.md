@@ -53,7 +53,7 @@ Repo layout
 ├── readme.md
 ├── riemannian_report.pdf
 │
-├── riemannian_la/                  # Core package
+├── riemannian_la/                        # Core package
 │   ├── __init__.py
 │   ├── BQ_rays_subspace.py
 │   ├── FullGaussianMeasure.py
@@ -71,13 +71,13 @@ Repo layout
 │   ├── train.py
 │   └── utils.py
 │
-└── examples/                       # Example scripts and notebooks
-    ├── UCI_test.py
-    ├── classification_test_experiment.py
+└── examples/                             # Example scripts and notebooks
+    ├── UCI_test.py                       # Runs evaluations on the UCI Wine data set for the report
+    ├── classification_test_experiment.py # Runs evaluations on synthetic data set for the report
     ├── emukit_doodles.py
-    ├── evalplots.py
-    ├── report.ipynb
-    └── report_integration_test.ipynb
+    ├── evalplots.py                      # Reshape UCI Wine results into tex tables and plots
+    ├── report.ipynb                      # Generates plots for the report: function approximator, banana distribution and BQ-plots
+    └── report_integration_test.ipynb.    # Integrating function over the banana distribution
 ````
 
 <!----
