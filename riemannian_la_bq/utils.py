@@ -5,14 +5,6 @@ import logging
 from datetime import datetime
 import os
 
-def tensify(variable):
-    if isinstance(variable, torch.Tensor):
-        return variable
-    elif type(variable) == type(None):
-        return None
-    else: 
-        return torch.tensor(variable, dtype=torch.float32)
-
 
 def iid_gaussian_prior_loss(prior_sigma=1.0):
     if prior_sigma == 0:  # if prior_sigma is zero, return a function that returns zero - that is: no regularization
@@ -26,7 +18,7 @@ def iid_gaussian_prior_loss(prior_sigma=1.0):
 def NegLogLik_regression(target_sigma=1.0):
     def fn(pred, target):
         #loss = (pred - target).pow(2).sum()/(2 * target_sigma**2)
-        loss = torch.nn.MSELoss(reduction="sum")(pred, target)/(2 * tensify(target_sigma)**2)
+        loss = torch.nn.MSELoss(reduction="sum")(pred, target)/(2 * torch.as_tensor(target_sigma)**2)
         return loss
     return fn
 

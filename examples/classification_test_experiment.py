@@ -18,7 +18,7 @@ from MCMC_sampler import MCMC_sampler
 from getdata import make_loaders, torch_seed, gen_model_data, gen_log_regression_data, get_dataloader_scipy
 from utils import NegLogLik_regression, NegLogLik_classification, identity_func
 from integration import integrator
-from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, tensify, setup_logger
+from utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, setup_logger
 from discrete_sampler import discrete_function_sampler, discrete_model_sampler
 from riemann_sampler import Riemann_sampler, riemann_plotter
 from BQ_rays_subspace import BayesianQuadrature_rays, transform

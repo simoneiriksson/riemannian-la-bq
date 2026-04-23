@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import torch.nn as nn
-from utils import tensify
 from utils import torch_seed
 
 from utils import torch_seed
@@ -26,9 +25,9 @@ def functional_banana(curvature=2.0, sigma_x=2.0, sigma_y=1.0):
     return banana
 
 def functional_d1(a, left_limit, right_limit):
-    a = tensify(a)
-    left_limit = tensify(left_limit)
-    right_limit = tensify(right_limit)
+    a = torch.as_tensor(a)
+    left_limit = torch.as_tensor(left_limit)
+    right_limit = torch.as_tensor(right_limit)
 
     def indef_integral(x):
         val = a**(-5/6) * (1/3 * (a**(-1/6)*x).atan() - \
@@ -46,9 +45,9 @@ def functional_d1(a, left_limit, right_limit):
 
 
 def functional_d1_2(a, left_limit, right_limit):
-    a = tensify(a)
-    left_limit = tensify(left_limit)
-    right_limit = tensify(right_limit)
+    a = torch.as_tensor(a)
+    left_limit = torch.as_tensor(left_limit)
+    right_limit = torch.as_tensor(right_limit)
 
     def indef_integral(x):
         val = torch.atan(x/a**(1/2))/(a**(1/2))
@@ -63,14 +62,14 @@ def functional_d1_2(a, left_limit, right_limit):
 
 
 def functional_d1_lognorm(mu, sigma):
-    mu = tensify(mu)
-    sigma = tensify(sigma)
+    mu = torch.as_tensor(mu)
+    sigma = torch.as_tensor(sigma)
     def fn(x):
         return torch.exp(-1/2 * ((torch.log(x) - mu)/sigma)**2) / (x * sigma * torch.tensor(2 * torch.pi).sqrt())
     return fn
 
 def functional_d1_halfcircle(a):
-    a = tensify(a)
+    a = torch.as_tensor(a)
 
     def indef_integral(x):
         # 1/2 x sqrt(a^2 - x^2) + 1/2 a^2 tan^(-1)(x/sqrt(a^2 - x^2)) + constant
@@ -102,8 +101,8 @@ def functional_d1_fourth_degree_poly():
     return fn
 
 def functional_d1_normal(mu, sigma):
-    mu = tensify(mu)
-    sigma = tensify(sigma)
+    mu = torch.as_tensor(mu)
+    sigma = torch.as_tensor(sigma)
     def fn(x):
         return torch.exp(-1/2 * ((x - mu)/sigma)**2) / (sigma * torch.tensor(2 * torch.pi).sqrt())
     return fn

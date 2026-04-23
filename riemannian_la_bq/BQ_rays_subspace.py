@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions.multivariate_normal import _precision_to_scale_tril
-from utils import tensify, loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict, make_functional_fwd, make_functional_fwd_vector_xs
+from utils import loss_func_from_target_sigma, make_functional_fwd_xs, vector_to_parameterdict, make_functional_fwd, make_functional_fwd_vector_xs
 from GGN_hessian import GGN_hessian_from_loader
 from hessian import hessian_from_model_loss_and_data, hessian_dict_to_matrix, hessian_from_loader, hessian_from_func
 from utils import NegLogLik_regression, NegLogLik_classification, iid_gaussian_prior_loss
@@ -354,8 +354,8 @@ class BayesianQuadrature_rays():
             if i == 0:
                 first_moments_mus = torch.zeros((len(preds), *mu.shape))
                 first_moments_vars = torch.zeros((len(preds), *var.shape))
-            first_moments_mus[i] = tensify(mu)
-            first_moments_vars[i] = tensify(var)
+            first_moments_mus[i] = torch.as_tensor(mu)
+            first_moments_vars[i] = torch.as_tensor(var)
         
         forward_transform, backwards_transform = transform(transform_type, param=transform_param)
 

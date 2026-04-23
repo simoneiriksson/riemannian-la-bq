@@ -1,6 +1,6 @@
 from torch.func import grad, jvp, vjp, hessian, jacfwd, jacrev, vmap, functional_call
 import torch
-from utils import tensify, make_functional_fwd_xs
+from utils import make_functional_fwd_xs
 
 # This function turns a dictionary of gradients into a single vector
 def grad_dict_to_vector(grad_dict, verbose=False, output_dims=0, device="cpu"):
@@ -34,7 +34,7 @@ def GGN_hessian(model, xs, ys, loss_fn=None, target_sigma=None, parametersubset=
         J_H_J = torch.einsum('ndk, nkD -> ndD', J_H, jacobian_matrix).sum(dim=0).detach()
 
     elif loss_fn == "regression":
-        H_factor = 1/tensify(target_sigma).to(device)**2
+        H_factor = 1/torch.as_tensor(target_sigma).to(device)**2
         loss_hessian_matrix = torch.eye(jacobian_matrix.shape[1], device = jacobian_matrix.device).unsqueeze(0).repeat(jacobian_matrix.shape[0], 1, 1) * H_factor
         J_H = torch.einsum('nkd, nki -> ndi', jacobian_matrix, loss_hessian_matrix)
         J_H_J = torch.einsum('ndk, nkD -> ndD', J_H, jacobian_matrix).sum(dim=0)
