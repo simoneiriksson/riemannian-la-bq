@@ -17,4 +17,98 @@ Furthermore, by sampling only from a subspace of the full parameter space, the G
 
 See the pdf `riemannian_report.pdf` for details.
 
+## Implementation
+
+
+<!--- 
+Results:
+- Table/plot with the headline outcome.
+- Link to results/ artifacts.
+--->
 ## How to run
+
+
+Create a virtual environment and install the packages:
+```
+python -m venv .venv 
+source .venv/bin/activate
+pip install -e .
+```
+Then the central experiment in the report can be run with 
+```
+cd riemannian_la/examples
+python3 classification_test_experiment.py
+```
+A few notebooks are also available: `report_integration_test.ipynb` and `report.ipynb`.
+
+## Repo layout
+<!--- 
+Repo layout
+- What’s in src/, evaluation/, etc.
+--->
+````
+.
+├── setup.py
+├── requirements.txt
+├── readme.md
+├── riemannian_report.pdf
+│
+├── riemannian_la/                  # Core package
+│   ├── __init__.py
+│   ├── BQ_rays_subspace.py
+│   ├── FullGaussianMeasure.py
+│   ├── GGN_hessian.py
+│   ├── MCMC_sampler.py
+│   ├── RayAcquisition.py
+│   ├── classification_eval.py
+│   ├── discrete_sampler.py
+│   ├── getdata.py
+│   ├── hessian.py
+│   ├── integration.py
+│   ├── laplace_approx.py
+│   ├── models.py
+│   ├── riemann_sampler.py
+│   ├── train.py
+│   └── utils.py
+│
+└── examples/                       # Example scripts and notebooks
+    ├── UCI_test.py
+    ├── classification_test_experiment.py
+    ├── emukit_doodles.py
+    ├── evalplots.py
+    ├── report.ipynb
+    └── report_integration_test.ipynb
+````
+
+<!----
+│
+├── evaluations/                    # Experiment evaluation outputs
+│   ├── experiment_eval_*.pkl
+│   ├── experiment_eval_*.txt
+│   ├── synth_experiment_eval_*.pkl
+│   └── synth_experiment_eval_*.txt
+│
+├── figures/                        # Experiment figures (multiple runs)
+│   ├── classification_experiment/
+│   ├── classification_experiment2/
+│   ├── classification_experiment3/
+│   ├── classification_experiment4/
+│   └── ...
+│
+├── report/
+│   ├── figures/
+│   │   └── ...                     # Report figures
+│   └── tables/
+│       ├── LogLikelihood_methods1.tex
+│       ├── LogLikelihood_methods2.tex
+│       ├── UCI_wine1.tex
+│       ├── UCI_wine2.tex
+│       ├── synth1.tex
+│       └── synth2.tex
+--->
+
+
+<!--- 
+Citation / attribution
+- BibTeX or a short citation line if it maps to a paper/report.
+--->

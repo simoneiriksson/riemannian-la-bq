@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riemannian_la"
+version = "0.0.0"
+dependencies = [
+	"emukit==0.4.11",
+	"GPy==1.13.2",
+	"hamiltorch @ git+https://github.com/AdamCobb/hamiltorch",
+	"matplotlib==3.10.8",
+	"numpy>=1.23,<2.0",
+	"pandas==3.0.2",
+	"scikit-learn==1.8.0",
+	"scipy",
+	"seaborn==0.13.2",
+	"torch==2.10.0",
+	"torchdiffeq==0.2.5",
+	"torchmetrics==1.8.2",
+	"torchvision==0.25.0",
+]
+
+[tool.setuptools]
+packages = ["riemannian_la"]
