@@ -10,17 +10,17 @@ import torch
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib 
-from models import LinearModel, FunctionApproximatorModel, SineModel
-from train import train
-from laplace_approx import Laplace
-from MCMC_sampler import MCMC_sampler
-from getdata import make_loaders, torch_seed, gen_model_data, gen_log_regression_data, get_dataloader_scipy
+from riemannian_la_bq.models import LinearModel, FunctionApproximatorModel, SineModel
+from riemannian_la_bq.train import train
+from riemannian_la_bq.laplace_approx import Laplace
+from riemannian_la_bq.MCMC_sampler import MCMC_sampler
+from riemannian_la_bq.getdata import make_loaders, torch_seed, gen_model_data, gen_log_regression_data, get_dataloader_scipy
 from riemannian_la_bq.utils import NegLogLik_regression, NegLogLik_classification, identity_func
-from integration import integrator
+from riemannian_la_bq.integration import integrator
 from riemannian_la_bq.utils import loss_func_from_target_sigma, make_functional_fwd_xs, functional_loss, functional_loss_for_vmap, sum_loss, neglog_loss, setup_logger
-from discrete_sampler import discrete_function_sampler, discrete_model_sampler
-from riemann_sampler import Riemann_sampler, riemann_plotter
-from BQ_rays_subspace import BayesianQuadrature_rays, transform
+from riemannian_la_bq.discrete_sampler import discrete_function_sampler, discrete_model_sampler
+from riemannian_la_bq.riemann_sampler import Riemann_sampler, riemann_plotter
+from riemannian_la_bq.BQ_rays_subspace import BayesianQuadrature_rays, transform
 from emukit.quadrature.methods import VanillaBayesianQuadrature, WarpedBayesianQuadratureModel, BoundedBayesianQuadrature
 from emukit.quadrature.methods.warpings import SquareRootWarping
 from emukit.model_wrappers import GPyModelWrapper
@@ -28,12 +28,12 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import torchmetrics
-from classification_eval import eval_classification_loss
+from riemannian_la_bq.classification_eval import eval_classification_loss
 from datetime import datetime
 import pickle
 import pprint
 
-base_directory = "."
+base_directory = ".."
 logger_info = setup_logger(base_directory, file_logging=True)
 logger_info('Start logging')
 logger_info(f"base_directory: {base_directory}")
